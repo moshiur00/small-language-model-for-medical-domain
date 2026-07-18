@@ -1,0 +1,3 @@
+python scripts/language/download_fasttext_model.py
+
+python scripts/language/verify_language.py

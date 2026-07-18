@@ -1,0 +1,23 @@
+python scripts/tokenizer/train_tokenizer.py
+
+python scripts/tokenizer/evaluate_tokenizer.py
+
+
+#Compare
+#First Time
+python scripts/tokenizer/compare_tokenizers.py --config configs/tokenizer.yaml
+
+# From Cache
+python scripts/tokenizer/compare_tokenizers.py --config configs/tokenizer.yaml --local-files-only
+
+
+# Tokenize
+python scripts/tokenizer/build_tokenized_dataset.py --config configs/data.yaml
+
+# For Overwrite
+python scripts/tokenizer/build_tokenized_dataset.py --config configs/data.yaml --overwrite
+
+
+
+# Check Tokenized dataset
+scripts/tokenizer/check_tokenized_dataset.py

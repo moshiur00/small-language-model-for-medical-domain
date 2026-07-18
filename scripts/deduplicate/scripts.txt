@@ -1,0 +1,15 @@
+python scripts/deduplicate/deduplicate_dataset.py tinystories
+
+python scripts/deduplicate/deduplicate_dataset.py wikitext103
+
+python scripts/deduplicate/deduplicate_dataset.py wikipedia
+
+
+
+
+
+python scripts/deduplicate/deduplicate_global.py
+
+
+
+python scripts/deduplicate/deduplicate_near.py

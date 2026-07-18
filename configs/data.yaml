@@ -1,0 +1,711 @@
+project:
+  random_seed: 42
+
+datasets:
+  tinystories:
+    hub_name: roneneldan/TinyStories
+    config_name: null
+    source_name: tinystories
+    license: cdla-sharing-1.0
+    language: en
+    streaming: true
+
+    splits:
+      train: train
+      validation: validation
+
+    max_documents:
+      train: 10000
+      validation: 1000
+
+    output_directory: datasets/raw/tinystories
+
+  wikitext103:
+    hub_name: Salesforce/wikitext
+    config_name: wikitext-103-raw-v1
+    source_name: wikitext103
+    license: cc-by-sa-3.0-and-gfdl
+    language: en
+    streaming: true
+
+    splits:
+      train: train
+      validation: validation
+      test: test
+
+    max_documents:
+      train: 10000
+      validation: 1000
+      test: 1000
+
+    output_directory: datasets/raw/wikitext103
+
+  wikipedia:
+    hub_name: wikimedia/wikipedia
+    config_name: 20231101.en
+    source_name: wikipedia
+    license: cc-by-sa-3.0-and-gfdl
+    language: en
+    streaming: true
+
+    # This Hugging Face subset only provides a train split.
+    splits:
+      train: train
+
+    max_documents:
+      train: 10000
+
+    output_directory: datasets/raw/wikipedia
+
+cleaning:
+  unicode_normalization: NFKC
+  fix_encoding: true
+  remove_html: true
+  preserve_paragraphs: true
+  remove_control_characters: true
+  normalize_whitespace: true
+  min_characters: 20
+  max_characters: null
+
+  datasets:
+    tinystories:
+      input_directory: datasets/raw/tinystories
+      output_directory: datasets/interim/cleaned/tinystories
+      splits:
+        - train
+        - validation
+
+    wikitext103:
+      input_directory: datasets/raw/wikitext103
+      output_directory: datasets/interim/cleaned/wikitext103
+      splits:
+        - train
+        - validation
+        - test
+
+    wikipedia:
+      input_directory: datasets/raw/wikipedia
+      output_directory: datasets/interim/cleaned/wikipedia
+      splits:
+        - train
+
+deduplication:
+  exact:
+    hash_algorithm: sha256
+    unicode_normalization: NFKC
+    normalize_whitespace: true
+    case_sensitive: true
+    store_content_hash: true
+
+    datasets:
+      tinystories:
+        input_directory: datasets/interim/cleaned/tinystories
+        output_directory: datasets/interim/deduplicated/tinystories
+        split_priority:
+          - validation
+          - train
+
+      wikitext103:
+        input_directory: datasets/interim/cleaned/wikitext103
+        output_directory: datasets/interim/deduplicated/wikitext103
+        split_priority:
+          - test
+          - validation
+          - train
+
+      wikipedia:
+        input_directory: datasets/interim/cleaned/wikipedia
+        output_directory: datasets/interim/deduplicated/wikipedia
+        split_priority:
+          - train
+
+  global:
+    output_directory: datasets/interim/global_deduplicated
+
+    priority:
+      - dataset: wikitext103
+        split: test
+        input_path: datasets/interim/deduplicated/wikitext103/test.jsonl
+
+      - dataset: wikitext103
+        split: validation
+        input_path: datasets/interim/deduplicated/wikitext103/validation.jsonl
+
+      - dataset: tinystories
+        split: validation
+        input_path: datasets/interim/deduplicated/tinystories/validation.jsonl
+
+      - dataset: wikipedia
+        split: train
+        input_path: datasets/interim/deduplicated/wikipedia/train.jsonl
+
+      - dataset: wikitext103
+        split: train
+        input_path: datasets/interim/deduplicated/wikitext103/train.jsonl
+
+      - dataset: tinystories
+        split: train
+        input_path: datasets/interim/deduplicated/tinystories/train.jsonl
+
+  near:
+    output_directory: datasets/interim/near_deduplicated
+
+    # Word-level comparison settings
+    shingle_size: 5
+    min_words: 20
+    lowercase: true
+    unicode_normalization: NFKC
+    normalize_whitespace: true
+
+    # MinHash and LSH settings
+    num_permutations: 128
+    random_seed: 42
+    lsh_threshold: 0.80
+
+    # A document is removed only after exact Jaccard verification.
+    similarity_threshold: 0.90
+
+    # Preserve signatures and similarity information in metadata/reports.
+    store_signature_metadata: true
+    write_duplicate_pairs: true
+
+    # Evaluation data receives priority over training data.
+    priority:
+      - dataset: wikitext103
+        split: test
+        input_path: datasets/interim/global_deduplicated/wikitext103/test.jsonl
+
+      - dataset: wikitext103
+        split: validation
+        input_path: datasets/interim/global_deduplicated/wikitext103/validation.jsonl
+
+      - dataset: tinystories
+        split: validation
+        input_path: datasets/interim/global_deduplicated/tinystories/validation.jsonl
+
+      - dataset: wikipedia
+        split: train
+        input_path: datasets/interim/global_deduplicated/wikipedia/train.jsonl
+
+      - dataset: wikitext103
+        split: train
+        input_path: datasets/interim/global_deduplicated/wikitext103/train.jsonl
+
+      - dataset: tinystories
+        split: train
+        input_path: datasets/interim/global_deduplicated/tinystories/train.jsonl
+
+language_verification:
+  model_path: models/language_identification/lid.176.bin
+  output_directory: datasets/interim/language_verified
+
+  expected_language: en
+  minimum_confidence: 0.80
+  top_k: 3
+
+  # Long documents do not need to be passed to the classifier in full.
+  max_sample_characters: 5000
+
+  # Documents shorter than this are less reliable for language detection.
+  minimum_detection_characters: 40
+
+  # Behavior for low-confidence English predictions.
+  keep_low_confidence_expected_language: true
+
+  # Behavior when the expected language appears in top-k but is not first.
+  keep_expected_language_in_top_k: false
+
+  store_top_predictions: true
+
+  priority:
+    - dataset: wikitext103
+      split: test
+      input_path: datasets/interim/near_deduplicated/wikitext103/test.jsonl
+
+    - dataset: wikitext103
+      split: validation
+      input_path: datasets/interim/near_deduplicated/wikitext103/validation.jsonl
+
+    - dataset: tinystories
+      split: validation
+      input_path: datasets/interim/near_deduplicated/tinystories/validation.jsonl
+
+    - dataset: wikipedia
+      split: train
+      input_path: datasets/interim/near_deduplicated/wikipedia/train.jsonl
+
+    - dataset: wikitext103
+      split: train
+      input_path: datasets/interim/near_deduplicated/wikitext103/train.jsonl
+
+    - dataset: tinystories
+      split: train
+      input_path: datasets/interim/near_deduplicated/tinystories/train.jsonl
+
+quality_filtering:
+  output_directory: datasets/interim/quality_filtered
+
+  pass_score: 0.80
+  review_score: 0.60
+
+  min_words: 20
+  max_words: 20000
+  min_sentences: 2
+
+  min_alphabetic_ratio: 0.55
+  max_digit_ratio: 0.30
+  max_symbol_ratio: 0.20
+  max_uppercase_ratio: 0.40
+
+  min_unique_word_ratio: 0.12
+  max_repeated_line_ratio: 0.30
+  max_repeated_sentence_ratio: 0.30
+  max_repeated_ngram_ratio: 0.40
+
+  repeated_ngram_size: 3
+
+  max_urls: 20
+  max_emails: 10
+  max_very_long_word_ratio: 0.05
+  very_long_word_length: 30
+
+  # Only severe failures automatically reject a document.
+  hard_rules:
+    - too_few_words
+    - too_many_words
+    - low_alphabetic_ratio
+    - high_symbol_ratio
+
+  # Suspicious but potentially valid documents are sent for review.
+  review_rules:
+    - high_repeated_line_ratio
+    - high_repeated_sentence_ratio
+    - high_repeated_ngram_ratio
+    - low_unique_word_ratio
+    - high_digit_ratio
+    - high_uppercase_ratio
+    - too_many_urls
+    - too_many_emails
+    - high_very_long_word_ratio
+
+  rule_penalties:
+    too_few_words: 0.40
+    too_many_words: 0.25
+    too_few_sentences: 0.10
+    low_alphabetic_ratio: 0.35
+    high_digit_ratio: 0.15
+    high_symbol_ratio: 0.30
+    high_uppercase_ratio: 0.15
+    low_unique_word_ratio: 0.10
+    high_repeated_line_ratio: 0.10
+    high_repeated_sentence_ratio: 0.20
+    high_repeated_ngram_ratio: 0.15
+    too_many_urls: 0.10
+    too_many_emails: 0.10
+    high_very_long_word_ratio: 0.15
+
+  store_metrics: true
+  store_failed_rules: true
+
+  priority:
+    - dataset: wikitext103
+      split: test
+      input_path: datasets/interim/language_verified/wikitext103/test.jsonl
+
+    - dataset: wikitext103
+      split: validation
+      input_path: datasets/interim/language_verified/wikitext103/validation.jsonl
+
+    - dataset: tinystories
+      split: validation
+      input_path: datasets/interim/language_verified/tinystories/validation.jsonl
+
+    - dataset: wikipedia
+      split: train
+      input_path: datasets/interim/language_verified/wikipedia/train.jsonl
+
+    - dataset: wikitext103
+      split: train
+      input_path: datasets/interim/language_verified/wikitext103/train.jsonl
+
+    - dataset: tinystories
+      split: train
+      input_path: datasets/interim/language_verified/tinystories/train.jsonl
+
+license_validation:
+  output_directory: datasets/interim/license_validated
+
+  missing_license_action: reject
+  unknown_license_action: reject
+  license_mismatch_action: review
+
+  store_policy_metadata: true
+
+  allowed_licenses:
+    cdla-sharing-1.0:
+      name: Community Data License Agreement - Sharing 1.0
+      allowed: true
+      attribution_required: true
+      share_alike_required: true
+      commercial_use: true
+      redistribution: true
+      notes:
+        - Preserve required notices and attribution.
+        - Review dataset-specific terms before external redistribution.
+
+    cc-by-sa-3.0:
+      name: Creative Commons Attribution-ShareAlike 3.0
+      allowed: true
+      attribution_required: true
+      share_alike_required: true
+      commercial_use: true
+      redistribution: true
+      notes:
+        - Attribution is required.
+        - Adapted material must follow applicable ShareAlike terms.
+
+    gfdl:
+      name: GNU Free Documentation License
+      allowed: true
+      attribution_required: true
+      share_alike_required: true
+      commercial_use: true
+      redistribution: true
+      notes:
+        - Preserve required notices and license information.
+        - Review invariant-section requirements when applicable.
+
+  license_aliases:
+    cdla-sharing-1.0:
+      - cdla-sharing-1.0
+      - cdla sharing 1.0
+      - community-data-license-agreement-sharing-1.0
+
+    cc-by-sa-3.0:
+      - cc-by-sa-3.0
+      - cc by-sa 3.0
+      - cc-by-sa-3.0-unported
+      - creative-commons-attribution-sharealike-3.0
+
+    gfdl:
+      - gfdl
+      - gnu-free-documentation-license
+      - gnu free documentation license
+
+  datasets:
+    tinystories:
+      accepted_licenses:
+        - cdla-sharing-1.0
+
+    wikitext103:
+      accepted_licenses:
+        - cc-by-sa-3.0
+        - gfdl
+      require_all_licenses: true
+
+    wikipedia:
+      accepted_licenses:
+        - cc-by-sa-3.0
+        - gfdl
+      require_all_licenses: true
+
+  priority:
+    - dataset: wikitext103
+      split: test
+      input_path: datasets/interim/quality_filtered/wikitext103/test.jsonl
+
+    - dataset: wikitext103
+      split: validation
+      input_path: datasets/interim/quality_filtered/wikitext103/validation.jsonl
+
+    - dataset: tinystories
+      split: validation
+      input_path: datasets/interim/quality_filtered/tinystories/validation.jsonl
+
+    - dataset: wikipedia
+      split: train
+      input_path: datasets/interim/quality_filtered/wikipedia/train.jsonl
+
+    - dataset: wikitext103
+      split: train
+      input_path: datasets/interim/quality_filtered/wikitext103/train.jsonl
+
+    - dataset: tinystories
+      split: train
+      input_path: datasets/interim/quality_filtered/tinystories/train.jsonl
+
+toxicity_audit:
+  model_name: unitary/toxic-bert
+  output_directory: datasets/interim/toxicity_audited
+
+  # Runtime
+  device: auto
+  batch_size: 8
+  max_length: 512
+
+  max_documents: 100 # max_documents: null
+
+  # Long-document sampling
+  max_chunks_per_document: 5
+  chunk_stride_tokens: 128
+
+  # Decision thresholds
+  review_threshold: 0.70
+  reject_threshold: 0.95
+
+  # Do not automatically reject medical or educational documents.
+  medical_context_review_only: true
+
+  # Production-safe initial setting:
+  # documents exceeding reject_threshold are reviewed, not removed.
+  automatically_reject: false
+
+  # Categories that contribute to the overall risk score.
+  monitored_labels:
+    - toxic
+    - severe_toxic
+    - obscene
+    - threat
+    - insult
+    - identity_hate
+
+  # Stronger categories that may support rejection when
+  # automatically_reject is enabled.
+  severe_labels:
+    - severe_toxic
+    - threat
+    - identity_hate
+
+  medical_context_terms:
+    - abuse
+    - abusive
+    - addiction
+    - alcohol dependence
+    - assault
+    - clinical
+    - diagnosis
+    - disease
+    - disorder
+    - domestic violence
+    - drug dependence
+    - epidemiology
+    - homicide
+    - injury
+    - medical
+    - medicine
+    - mental health
+    - mortality
+    - patient
+    - psychiatric
+    - psychiatry
+    - psychology
+    - rape
+    - self-harm
+    - sexual health
+    - suicide
+    - suicidal
+    - symptom
+    - therapy
+    - treatment
+    - trauma
+    - violence
+
+  educational_context_terms:
+    - article
+    - encyclopedia
+    - historical
+    - history
+    - literature
+    - research
+    - study
+    - textbook
+
+  context_minimum_matches: 1
+
+  store_scores: true
+  store_chunk_scores: false
+  write_review_records: true
+  write_rejected_records: true
+
+  priority:
+    - dataset: wikitext103
+      split: test
+      input_path: datasets/interim/license_validated/wikitext103/test.jsonl
+
+    - dataset: wikitext103
+      split: validation
+      input_path: datasets/interim/license_validated/wikitext103/validation.jsonl
+
+    - dataset: tinystories
+      split: validation
+      input_path: datasets/interim/license_validated/tinystories/validation.jsonl
+
+    - dataset: wikipedia
+      split: train
+      input_path: datasets/interim/license_validated/wikipedia/train.jsonl
+
+    - dataset: wikitext103
+      split: train
+      input_path: datasets/interim/license_validated/wikitext103/train.jsonl
+
+    - dataset: tinystories
+      split: train
+      input_path: datasets/interim/license_validated/tinystories/train.jsonl
+
+corpus_assembly:
+  output_directory: datasets/processed
+
+  # Include documents marked for review by quality or license stages.
+  # Supported values: include, exclude
+  review_policy: include
+
+  # Require metadata produced by previous stages.
+  require_quality_metadata: true
+  require_license_metadata: true
+
+  # Only these upstream decisions can enter the final corpus.
+  accepted_quality_decisions:
+    - pass
+    - review
+
+  accepted_license_decisions:
+    - pass
+    - review
+
+  # Development limit applied separately to every input file.
+  # Use null for the complete corpus.
+  max_documents_per_input: null
+
+  # Tokenizer corpus is created only from the training split.
+  tokenizer_split: train
+  tokenizer_corpus_filename: tokenizer_corpus.txt
+
+  # Convert internal line breaks to spaces so every document occupies
+  # exactly one line in tokenizer_corpus.txt.
+  flatten_tokenizer_documents: true
+
+  # Do not insert <eos> here because the tokenizer has not been trained yet.
+  tokenizer_document_separator: "\n"
+
+  # Approximate token count before the tokenizer exists.
+  estimated_characters_per_token: 4.0
+
+  store_assembly_metadata: true
+
+  inputs:
+    - dataset: wikitext103
+      source_split: test
+      output_split: test
+      input_path: datasets/interim/license_validated/wikitext103/test.jsonl
+
+    - dataset: wikitext103
+      source_split: validation
+      output_split: validation
+      input_path: datasets/interim/license_validated/wikitext103/validation.jsonl
+
+    - dataset: tinystories
+      source_split: validation
+      output_split: validation
+      input_path: datasets/interim/license_validated/tinystories/validation.jsonl
+
+    - dataset: wikipedia
+      source_split: train
+      output_split: train
+      input_path: datasets/interim/license_validated/wikipedia/train.jsonl
+
+    - dataset: wikitext103
+      source_split: train
+      output_split: train
+      input_path: datasets/interim/license_validated/wikitext103/train.jsonl
+
+    - dataset: tinystories
+      source_split: train
+      output_split: train
+      input_path: datasets/interim/license_validated/tinystories/train.jsonl
+
+tokenizer:
+  training_corpus: datasets/processed/tokenizer_corpus.txt
+  output_directory: artifacts/tokenizer
+
+  algorithm: byte_level_bpe
+  vocabulary_size: 16000
+  minimum_frequency: 2
+
+  unicode_normalization: NFKC
+  add_prefix_space: false
+  trim_offsets: true
+  add_bos_and_eos: true
+  model_max_length: 1024
+  save_model_files: true
+  show_progress: true
+
+  special_tokens:
+    pad_token: "<pad>"
+    unknown_token: "<unk>"
+    beginning_of_sequence_token: "<bos>"
+    end_of_sequence_token: "<eos>"
+
+  comparison:
+    custom_tokenizer_path: artifacts/tokenizer
+    gpt2_tokenizer_name: openai-community/gpt2
+
+    evaluation_files:
+      - datasets/processed/validation.jsonl
+      - datasets/processed/test.jsonl
+
+    text_field: text
+    max_documents: null
+    sample_count: 5
+
+    output_directory: artifacts/tokenizer/comparison
+
+    medical_terms:
+      - cardiovascular
+      - electrocardiography
+      - gastroenterology
+      - neurodegenerative
+      - immunohistochemistry
+      - pharmacokinetics
+      - contraindication
+      - hypertension
+      - hypoglycemia
+      - adenocarcinoma
+      - echocardiography
+      - cerebrovascular
+      - thrombocytopenia
+      - bronchodilator
+      - metastasis
+      - inflammation
+      - antimicrobial
+      - intravenous
+      - diagnosis
+      - prognosis
+
+tokenized_dataset:
+  tokenizer_path: artifacts/tokenizer
+  output_directory: datasets/tokenized
+
+  # Each stored sample contains sequence_length + 1 tokens.
+  # Dataset returns 256 input tokens and their 256 next-token labels.
+  sequence_length: 256
+
+  # 8192 sequences × 257 tokens × 2 bytes ≈ 4.0 MiB per uint16 shard.
+  sequences_per_shard: 8192
+
+  # auto selects uint16 for your 16,000-token vocabulary.
+  dtype: auto
+  text_field: text
+
+  # Refuse accidental replacement unless this is true or --overwrite is used.
+  overwrite: false
+
+  # Optional development limit applied to all splits.
+  max_documents: null
+
+  splits:
+    train:
+      input_path: datasets/processed/train.jsonl
+    validation:
+      input_path: datasets/processed/validation.jsonl
+    test:
+      input_path: datasets/processed/test.jsonl

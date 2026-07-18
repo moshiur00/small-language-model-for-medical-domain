@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment variables
+.env
+
+# Python package metadata
+*.egg-info/
+
+# Generated datasets
+datasets/raw/*
+datasets/interim/*
+datasets/processed/*
+datasets/tokenized/*
+datasets/metadata/*
+
+
+
+# Keep directory structure
+!datasets/raw/.gitkeep
+!datasets/interim/.gitkeep
+!datasets/processed/.gitkeep
+!datasets/metadata/.gitkeep
+!datasets/tokenized/.gitkeep
+
+# Model artifacts
+models/
+checkpoints/
+outputs/
+
+# Training logs and reports
+artifacts/tokenizer/
+
+
+# Downloaded language-identification models
+models/language_identification/*.bin
+models/language_identification/*.ftz
+
+# Experiment tracking
+wandb/
+mlruns/
+
+# IDE
+.vscode/
+.idea/
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+# Type checking and coverage
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Packaging
+build/
+dist/
+
+# Local environment variants
+.env.*
+!.env.example
+
+# Logs
+*.log

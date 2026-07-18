@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "medical-slm"
+version = "0.1.0"
+description = "A medical small language model built from scratch"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4>=4.12",
+    "datasets>=3.0",
+    "datasketch>=1.6",
+    "fasttext-predict",
+    "ftfy>=6.2",
+    "pyyaml>=6.0",
+    "tqdm>=4.66",
+    "torch>=2.3",
+    "transformers>=4.45",
+    "tokenizers>=0.21,<1",
+    "numpy>=1.26,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

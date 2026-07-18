@@ -1,0 +1,5 @@
+python scripts/clean/clean_dataset.py tinystories
+
+python scripts/clean/clean_dataset.py wikitext103
+
+python scripts/clean/clean_dataset.py wikipedia

@@ -1,0 +1,6 @@
+
+python scripts/download/download_dataset.py tinystories
+
+python scripts/download/download_dataset.py wikitext103
+
+python scripts/download/download_dataset.py wikipedia
