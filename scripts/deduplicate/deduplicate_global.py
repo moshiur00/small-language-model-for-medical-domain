@@ -12,6 +12,7 @@ import yaml
 from medical_slm.data.deduplication.global_exact import (
     run_global_exact_deduplication,
 )
+from medical_slm.data.pipeline_inventory import build_stage_priority
 
 
 LOGGER = logging.getLogger(__name__)
@@ -84,8 +85,13 @@ def run_configured_global_deduplication(
             f"fields: {missing}"
         )
 
+    priority = (
+        build_stage_priority(config, input_directory="datasets/interim/deduplicated")
+        if global_config.get("auto_include_configured_datasets", False)
+        else global_config["priority"]
+    )
     return run_global_exact_deduplication(
-        priority=global_config["priority"],
+        priority=priority,
         output_directory=Path(
             global_config["output_directory"]
         ),

@@ -877,7 +877,7 @@ def build_final_corpus(
             "final_corpus_assembly"
         ),
         "input_stage": (
-            "license_validated"
+            str(config.get("input_stage", "toxicity_audited"))
         ),
         "review_policy": str(
             config.get(

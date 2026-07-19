@@ -527,3 +527,77 @@ def test_lsh_threshold_cannot_exceed_verification_threshold(
             output_directory=tmp_path / "output",
             config=invalid_config,
         )
+
+
+def test_rolling_index_bounds_memory_and_evicts_old_documents(
+    tmp_path: Path,
+) -> None:
+    input_path = tmp_path / "train.jsonl"
+    first_text = "alpha beta gamma delta epsilon zeta eta theta"
+    write_jsonl(
+        [
+            {"id": "first", "text": first_text},
+            {
+                "id": "second",
+                "text": "one two three four five six seven eight",
+            },
+            {
+                "id": "third",
+                "text": "red blue green yellow orange purple black white",
+            },
+            {"id": "late-copy", "text": first_text},
+        ],
+        input_path,
+    )
+    config = dict(NEAR_CONFIG)
+    config["max_indexed_documents"] = 2
+
+    summary = run_global_near_deduplication(
+        priority=[
+            {
+                "dataset": "example",
+                "split": "train",
+                "input_path": str(input_path),
+            }
+        ],
+        output_directory=tmp_path / "output",
+        config=config,
+    )
+
+    assert summary["output_documents"] == 4
+    assert summary["evicted_index_documents"] == 2
+
+
+def test_completed_file_is_resumed_from_checkpoint(tmp_path: Path) -> None:
+    input_path = tmp_path / "train.jsonl"
+    write_jsonl(
+        [
+            {
+                "id": "heart",
+                "text": "heart blood artery vein pulse cardiac health",
+            }
+        ],
+        input_path,
+    )
+    output_directory = tmp_path / "output"
+    priority = [
+        {
+            "dataset": "example",
+            "split": "train",
+            "input_path": str(input_path),
+        }
+    ]
+
+    first = run_global_near_deduplication(
+        priority=priority,
+        output_directory=output_directory,
+        config=NEAR_CONFIG,
+    )
+    second = run_global_near_deduplication(
+        priority=priority,
+        output_directory=output_directory,
+        config=NEAR_CONFIG,
+    )
+
+    assert second["input_documents"] == first["input_documents"] == 1
+    assert second["output_documents"] == first["output_documents"] == 1

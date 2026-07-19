@@ -15,6 +15,7 @@ from medical_slm.data.toxicity.detector import (
 from medical_slm.data.toxicity.pipeline import (
     run_toxicity_audit,
 )
+from medical_slm.data.pipeline_inventory import build_stage_priority
 
 
 LOGGER = logging.getLogger(__name__)
@@ -134,10 +135,13 @@ def run_configured_toxicity_audit(
         )
     )
 
+    priority = (
+        build_stage_priority(config, input_directory="datasets/interim/license_validated")
+        if toxicity_config.get("auto_include_configured_datasets", False)
+        else toxicity_config["priority"]
+    )
     return run_toxicity_audit(
-        priority=toxicity_config[
-            "priority"
-        ],
+        priority=priority,
         output_directory=Path(
             toxicity_config[
                 "output_directory"

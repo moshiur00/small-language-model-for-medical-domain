@@ -73,3 +73,20 @@ dist/
 
 # Logs
 *.log
+
+
+# Training dashboards and profiler output
+runs/
+tensorboard/
+lightning_logs/
+profile/
+*.prof
+*.trace.json
+
+# Interrupted atomic writes
+*.partial
+*.tmp
+
+# Local caches
+.cache/
+huggingface/

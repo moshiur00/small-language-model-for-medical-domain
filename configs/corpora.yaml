@@ -1,0 +1,99 @@
+# Corpus targets are approximate pre-tokenizer budgets. Final assembly must stop
+# on counts produced by the trained tokenizer, not character estimates.
+corpora:
+  tokenizer_60m:
+    target_tokens: 60000000
+    shuffle_seed: 42
+    sources:
+      fineweb_edu: {tokens: 27000000, domain: general}
+      wikipedia: {tokens: 12000000, domain: general}
+      tinystories: {tokens: 6000000, domain: general}
+      wikitext103: {tokens: 3000000, domain: general}
+      project_gutenberg_public_domain: {tokens: 3000000, domain: general}
+      pubmed_abstracts: {tokens: 6000000, domain: medical}
+      pmc_open_access: {tokens: 2000000, domain: medical}
+      wikidoc: {tokens: 1000000, domain: medical}
+
+  stage_a_325m:
+    target_tokens: 325000000
+    sources:
+      fineweb_edu: {tokens: 145000000, domain: general}
+      wikipedia: {tokens: 70000000, domain: general}
+      tinystories: {tokens: 40000000, domain: general}
+      wikitext103: {tokens: 25000000, domain: general}
+      project_gutenberg_public_domain: {tokens: 20000000, domain: general}
+      pubmed_abstracts: {tokens: 15000000, domain: medical}
+      pmc_open_access: {tokens: 7000000, domain: medical}
+      wikidoc: {tokens: 3000000, domain: medical}
+
+  continual_medical_225m:
+    target_tokens: 225000000
+    sources:
+      pmc_open_access: {tokens: 95000000, domain: medical}
+      pubmed_abstracts: {tokens: 65000000, domain: medical}
+      wikidoc: {tokens: 25000000, domain: medical}
+      fineweb_edu: {tokens: 25000000, domain: general}
+      wikipedia: {tokens: 15000000, domain: general}
+
+  sft_balanced:
+    balance_by: examples
+    sampling: capped_round_robin
+    sources:
+      medmcqa: {weight: 1, domain: medical}
+      pubmedqa: {weight: 1, domain: medical}
+      alpaca: {weight: 1, domain: general}
+      medalpaca: {weight: 1, domain: medical}
+      medinstruct: {weight: 1, domain: medical, license_gate: noncommercial}
+      chatdoctor: {weight: 1, domain: medical, license_gate: manual_review}
+      openmedinstruct: {weight: 1, domain: medical, license_gate: manual_review}
+
+license_policy:
+  # PMC licenses are article-level. Only accept records carrying an explicit
+  # allowlisted license; never assign one blanket license to the whole subset.
+  pmc_open_access: article_level
+  pubmed_abstracts: terms_and_copyright_review
+  wikidoc: manual_review
+  open_medical_books: item_level_public_domain_or_open_license
+
+# Caps include a 25% planning margin over the largest allocation for each
+# pretraining source (50% for PMC because article-level license rejection is
+# expected). They bound network and disk use; corpus assembly enforces tokens.
+download_plan:
+  fineweb_edu:
+    estimated_tokens_per_document: 1000
+    max_documents: {train: 181250}
+  project_gutenberg_public_domain:
+    estimated_tokens_per_document: 50000
+    max_documents: {train: 500}
+  wikipedia:
+    estimated_tokens_per_document: 750
+    max_documents: {train: 116667}
+  tinystories:
+    estimated_tokens_per_document: 250
+    max_documents: {train: 200000, validation: 1000}
+  wikitext103:
+    estimated_tokens_per_document: 600
+    max_documents: {train: 52084, validation: 1000, test: 1000}
+  pubmed_abstracts:
+    estimated_tokens_per_document: 250
+    max_documents: {train: 325000}
+  pmc_open_access:
+    estimated_tokens_per_document: 3000
+    max_documents: {train: 50000}
+  wikidoc:
+    estimated_tokens_per_document: 500
+    max_documents: {train: 37500}
+  medmcqa:
+    max_documents: {train: 182822, validation: 4183, test: 6150}
+  alpaca:
+    max_documents: {train: 52002}
+  medalpaca:
+    max_documents: {train: 33955}
+  medinstruct:
+    max_documents: {train: 52000}
+  chatdoctor:
+    max_documents: {train: 100000, validation: 10000, test: 10000}
+  pubmedqa:
+    max_documents: {train: 1000}
+  openmedinstruct:
+    max_documents: {train: 52000}

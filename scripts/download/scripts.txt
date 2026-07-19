@@ -4,3 +4,30 @@ python scripts/download/download_dataset.py tinystories
 python scripts/download/download_dataset.py wikitext103
 
 python scripts/download/download_dataset.py wikipedia
+
+python scripts/download/download_dataset.py fineweb_edu
+
+python scripts/download/download_dataset.py project_gutenberg_public_domain
+
+python scripts/download/download_dataset.py medmcqa
+
+python scripts/download/download_dataset.py pubmed_abstracts
+
+python scripts/download/download_dataset.py pmc_open_access
+
+python scripts/download/download_dataset.py wikidoc
+
+python scripts/download/download_dataset.py alpaca
+
+python scripts/download/download_dataset.py medalpaca
+
+python scripts/download/download_dataset.py medinstruct
+
+python scripts/download/download_dataset.py chatdoctor
+
+python scripts/download/download_dataset.py pubmedqa
+
+python scripts/download/download_dataset.py openmedinstruct
+
+# Run all of the above in registry order.
+python scripts/download/download_dataset.py all

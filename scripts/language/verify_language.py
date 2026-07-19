@@ -15,6 +15,7 @@ from medical_slm.data.language.detector import (
 from medical_slm.data.language.pipeline import (
     run_language_verification,
 )
+from medical_slm.data.pipeline_inventory import build_stage_priority
 
 
 LOGGER = logging.getLogger(__name__)
@@ -99,8 +100,13 @@ def run_configured_language_verification(
         ),
     )
 
+    priority = (
+        build_stage_priority(config, input_directory="datasets/interim/near_deduplicated")
+        if language_config.get("auto_include_configured_datasets", False)
+        else language_config["priority"]
+    )
     return run_language_verification(
-        priority=language_config["priority"],
+        priority=priority,
         output_directory=Path(
             language_config["output_directory"]
         ),

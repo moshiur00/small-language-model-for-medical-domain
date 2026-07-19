@@ -12,6 +12,7 @@ import yaml
 from medical_slm.data.deduplication.exact import (
     deduplicate_dataset_splits,
 )
+from medical_slm.data.pipeline_inventory import configured_splits, split_priority
 
 
 LOGGER = logging.getLogger(__name__)
@@ -66,6 +67,16 @@ def deduplicate_configured_dataset(
         "datasets",
         {},
     )
+
+    if dataset_name not in datasets_config and dataset_name in config.get("datasets", {}):
+        datasets_config = {
+            **datasets_config,
+            dataset_name: {
+                "input_directory": f"datasets/interim/cleaned/{dataset_name}",
+                "output_directory": f"datasets/interim/deduplicated/{dataset_name}",
+                "split_priority": list(split_priority(config, dataset_name)),
+            },
+        }
 
     if dataset_name not in datasets_config:
         available = ", ".join(
@@ -149,10 +160,16 @@ def main() -> None:
     configure_logging()
     arguments = parse_arguments()
 
-    deduplicate_configured_dataset(
-        config_path=arguments.config,
-        dataset_name=arguments.dataset,
-    )
+    if arguments.dataset == "all":
+        config = load_config(arguments.config)
+        dataset_names = list(dict.fromkeys(dataset for dataset, _ in configured_splits(config)))
+    else:
+        dataset_names = [arguments.dataset]
+    for dataset_name in dataset_names:
+        deduplicate_configured_dataset(
+            config_path=arguments.config,
+            dataset_name=dataset_name,
+        )
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import unicodedata
+from collections import deque
 from collections.abc import Iterator, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -286,6 +287,7 @@ def iter_near_unique_records(
     lsh: MinHashLSH,
     kept_shingles: dict[str, set[str]],
     kept_records: dict[str, dict[str, Any]],
+    indexed_document_ids: deque[str],
     config: Mapping[str, Any],
     statistics: dict[str, Any],
     duplicate_pairs: list[dict[str, Any]],
@@ -312,6 +314,14 @@ def iter_near_unique_records(
     store_signature_metadata = bool(
         config.get("store_signature_metadata", True)
     )
+    max_indexed_documents = int(
+        config.get("max_indexed_documents", 2000)
+    )
+
+    if max_indexed_documents <= 0:
+        raise ValueError(
+            "max_indexed_documents must be greater than zero."
+        )
 
     for source_index, record in enumerate(
         tqdm(
@@ -418,6 +428,17 @@ def iter_near_unique_records(
             "dataset": dataset_name,
             "split": split,
         }
+        indexed_document_ids.append(document_id)
+
+        # MinHashLSH and exact-verification shingles are both sizeable.
+        # Keeping a rolling window prevents memory use from growing with the
+        # full corpus while still comparing against recent retained records.
+        while len(indexed_document_ids) > max_indexed_documents:
+            evicted_id = indexed_document_ids.popleft()
+            lsh.remove(evicted_id)
+            kept_shingles.pop(evicted_id, None)
+            kept_records.pop(evicted_id, None)
+            statistics["evicted_index_documents"] += 1
 
         statistics["indexed_documents"] += 1
         statistics["output_documents"] += 1
@@ -480,7 +501,13 @@ def run_global_near_deduplication(
 
     kept_shingles: dict[str, set[str]] = {}
     kept_records: dict[str, dict[str, Any]] = {}
+    indexed_document_ids: deque[str] = deque()
+    duplicate_pairs_path = (
+        output_directory / "near_duplicate_pairs.jsonl"
+    )
     duplicate_pairs: list[dict[str, Any]] = []
+    if bool(config.get("resume", True)) and duplicate_pairs_path.exists():
+        duplicate_pairs.extend(read_jsonl(duplicate_pairs_path))
     file_reports: list[dict[str, Any]] = []
 
     for entry in priority:
@@ -505,6 +532,54 @@ def run_global_near_deduplication(
             dataset_output_directory / f"{split}.jsonl"
         )
 
+        report_path = output_path.with_suffix(
+            ".near_deduplication.json"
+        )
+
+        # A report is written only after the output has been atomically
+        # committed. Its presence therefore acts as a per-file checkpoint.
+        if (
+            bool(config.get("resume", True))
+            and output_path.exists()
+            and report_path.exists()
+        ):
+            with report_path.open("r", encoding="utf-8") as file:
+                completed_statistics = json.load(file)
+            file_reports.append(completed_statistics)
+            LOGGER.info(
+                "Checkpoint found; skipping completed %s/%s",
+                dataset_name,
+                split,
+            )
+            rebuild_statistics: dict[str, Any] = {
+                "input_documents": 0,
+                "output_documents": 0,
+                "indexed_documents": 0,
+                "evicted_index_documents": 0,
+                "short_documents_not_indexed": 0,
+                "candidate_matches": 0,
+                "near_duplicate_documents": 0,
+                "rejected_documents": 0,
+                "rejection_counts": {},
+            }
+            # Rebuild only the bounded rolling state from checkpoint output.
+            # This preserves cross-file comparisons without retaining the
+            # complete corpus in memory or rerunning completed output writes.
+            for _ in iter_near_unique_records(
+                output_path,
+                dataset_name=dataset_name,
+                split=split,
+                lsh=lsh,
+                kept_shingles=kept_shingles,
+                kept_records=kept_records,
+                indexed_document_ids=indexed_document_ids,
+                config=config,
+                statistics=rebuild_statistics,
+                duplicate_pairs=[],
+            ):
+                pass
+            continue
+
         statistics: dict[str, Any] = {
             "dataset": dataset_name,
             "split": split,
@@ -514,6 +589,7 @@ def run_global_near_deduplication(
             "input_documents": 0,
             "output_documents": 0,
             "indexed_documents": 0,
+            "evicted_index_documents": 0,
             "short_documents_not_indexed": 0,
             "candidate_matches": 0,
             "near_duplicate_documents": 0,
@@ -528,14 +604,18 @@ def run_global_near_deduplication(
             lsh=lsh,
             kept_shingles=kept_shingles,
             kept_records=kept_records,
+            indexed_document_ids=indexed_document_ids,
             config=config,
             statistics=statistics,
             duplicate_pairs=duplicate_pairs,
         )
 
+        temporary_output_path = output_path.with_suffix(
+            output_path.suffix + ".partial"
+        )
         written_count = write_jsonl(
             records,
-            output_path,
+            temporary_output_path,
         )
 
         if written_count != statistics["output_documents"]:
@@ -544,11 +624,12 @@ def run_global_near_deduplication(
                 "near-deduplication statistics."
             )
 
-        report_path = output_path.with_suffix(
-            ".near_deduplication.json"
-        )
+        temporary_output_path.replace(output_path)
 
-        with report_path.open(
+        temporary_report_path = report_path.with_suffix(
+            report_path.suffix + ".partial"
+        )
+        with temporary_report_path.open(
             "w",
             encoding="utf-8",
         ) as file:
@@ -558,6 +639,7 @@ def run_global_near_deduplication(
                 indent=2,
                 ensure_ascii=False,
             )
+        temporary_report_path.replace(report_path)
 
         file_reports.append(statistics)
 
@@ -581,6 +663,9 @@ def run_global_near_deduplication(
             "random_seed": int(config.get("random_seed", 42)),
             "lsh_threshold": lsh_threshold,
             "similarity_threshold": similarity_threshold,
+            "max_indexed_documents": int(
+                config.get("max_indexed_documents", 2000)
+            ),
         },
         "input_documents": sum(
             report["input_documents"]
@@ -592,6 +677,10 @@ def run_global_near_deduplication(
         ),
         "indexed_documents": sum(
             report["indexed_documents"]
+            for report in file_reports
+        ),
+        "evicted_index_documents": sum(
+            report.get("evicted_index_documents", 0)
             for report in file_reports
         ),
         "short_documents_not_indexed": sum(
@@ -630,10 +719,6 @@ def run_global_near_deduplication(
         )
 
     if bool(config.get("write_duplicate_pairs", True)):
-        duplicate_pairs_path = (
-            output_directory / "near_duplicate_pairs.jsonl"
-        )
-
         write_jsonl(
             duplicate_pairs,
             duplicate_pairs_path,

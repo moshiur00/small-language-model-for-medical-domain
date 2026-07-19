@@ -1,0 +1,18 @@
+# After all downloads finish, ensure the language model exists:
+python scripts/language/download_fasttext_model.py
+
+# Run Everything
+python scripts/prepare_data.py
+
+# Restart from failed stage 
+python scripts/prepare_data.py --start-at quality
+
+# run a limited range:
+python scripts/prepare_data.py \
+  --start-at license \
+  --stop-after toxicity
+
+
+# I am Using this script
+python scripts/prepare_data.py --stop-after license
+python scripts/assembly/build_phase_corpora.py --input-directory datasets/interim/license_validated

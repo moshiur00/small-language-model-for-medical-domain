@@ -482,6 +482,17 @@ def run_quality_filtering(
             entry["input_path"]
         )
 
+        entry_config = dict(config)
+        profile_name = entry.get("profile")
+        profiles = config.get("profiles", {})
+        if profile_name is not None:
+            if not isinstance(profiles, Mapping) or profile_name not in profiles:
+                raise ValueError(f"Unknown quality profile: {profile_name}")
+            profile = profiles[profile_name]
+            if not isinstance(profile, Mapping):
+                raise TypeError(f"Quality profile {profile_name!r} must be a mapping.")
+            entry_config.update(profile)
+
         dataset_output_directory = (
             output_directory
             / dataset_name
@@ -504,8 +515,10 @@ def run_quality_filtering(
         ) = filter_jsonl_quality(
             input_path=input_path,
             output_path=output_path,
-            config=config,
+            config=entry_config,
         )
+
+        statistics["profile"] = profile_name
 
         statistics["dataset"] = (
             dataset_name

@@ -10,6 +10,7 @@ from typing import Any
 import yaml
 
 from medical_slm.data.cleaning.pipeline import clean_jsonl_file
+from medical_slm.data.pipeline_inventory import configured_splits
 
 
 LOGGER = logging.getLogger(__name__)
@@ -54,6 +55,17 @@ def clean_dataset(
     cleaning_config = config["cleaning"]
 
     datasets_config = cleaning_config.get("datasets", {})
+
+    if dataset_name not in datasets_config and dataset_name in config.get("datasets", {}):
+        source_config = config["datasets"][dataset_name]
+        datasets_config = {
+            **datasets_config,
+            dataset_name: {
+                "input_directory": source_config["output_directory"],
+                "output_directory": f"datasets/interim/cleaned/{dataset_name}",
+                "splits": list(source_config["splits"]),
+            },
+        }
 
     if dataset_name not in datasets_config:
         available = ", ".join(sorted(datasets_config))
@@ -115,10 +127,13 @@ def main() -> None:
     configure_logging()
     arguments = parse_arguments()
 
-    clean_dataset(
-        config_path=arguments.config,
-        dataset_name=arguments.dataset,
-    )
+    if arguments.dataset == "all":
+        config = load_config(arguments.config)
+        dataset_names = list(dict.fromkeys(dataset for dataset, _ in configured_splits(config)))
+    else:
+        dataset_names = [arguments.dataset]
+    for dataset_name in dataset_names:
+        clean_dataset(config_path=arguments.config, dataset_name=dataset_name)
 
 
 if __name__ == "__main__":
