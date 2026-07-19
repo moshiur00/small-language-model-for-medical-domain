@@ -1,9 +1,189 @@
 project:
   random_seed: 42
+  corpora_config: configs/corpora.yaml
 
 datasets:
+  fineweb_edu:
+    source_type: huggingface
+    hub_name: HuggingFaceFW/fineweb-edu
+    revision: 87f09149ef4734204d70ed1d046ddc9ca3f2b8f9
+    config_name: sample-10BT
+    source_name: fineweb_edu
+    license: odc-by-1.0
+    language: en
+    streaming: true
+    splits: { train: train }
+    max_documents: { train: 181250 }
+    output_directory: datasets/raw/fineweb_edu
+
+  project_gutenberg_public_domain:
+    source_type: huggingface
+    hub_name: common-pile/project_gutenberg
+    revision: 01dc90a5002f8977c7fb03a372c14bca29c65cf1
+    config_name: null
+    source_name: project_gutenberg_public_domain
+    license: public-domain-review
+    language: en
+    streaming: true
+    splits: { train: train }
+    max_documents: { train: 500 }
+    output_directory: datasets/raw/project_gutenberg_public_domain
+
+  medmcqa:
+    source_type: huggingface
+    hub_name: openlifescienceai/medmcqa
+    revision: 91c6572c454088bf71b679ad90aa8dffcd0d5868
+    config_name: null
+    source_name: medmcqa
+    license: apache-2.0
+    language: en
+    streaming: true
+    splits: { train: train, validation: validation, test: test }
+    max_documents: { train: 182822, validation: 4183, test: 6150 }
+    output_directory: datasets/raw/medmcqa
+
+  pubmed_abstracts:
+    source_type: ncbi_eutils
+    base_url: https://eutils.ncbi.nlm.nih.gov/entrez/eutils
+    database: pubmed
+    search_term: "hasabstract[text] AND english[lang]"
+    # PubMed ESearch exposes at most 9,999 records per query. The downloader
+    # walks backward through disjoint record-creation-date windows inside this
+    # pinned range until max_documents is reached. CRDT avoids large first-of-
+    # month spikes caused by incomplete bibliographic publication dates.
+    date_field: CRDT
+    date_start: "2025/01/01"
+    date_end: "2026/07/18"
+    batch_size: 200
+    email_environment_variable: NCBI_EMAIL
+    api_key_environment_variable: NCBI_API_KEY
+    source_name: pubmed_abstracts
+    license: pubmed-terms-record-level-copyright
+    language: en
+    streaming: true
+    resume: true
+    splits: { train: all }
+    max_documents: { train: 325000 }
+    output_directory: datasets/raw/pubmed_abstracts
+
+  pmc_open_access:
+    source_type: ncbi_eutils
+    base_url: https://eutils.ncbi.nlm.nih.gov/entrez/eutils
+    database: pmc
+    search_term: "open access[filter] AND english[lang]"
+    # PMC history sessions can expire during a 50k-record fetch. Short EDAT
+    # partitions keep each history session bounded and independently retryable.
+    date_field: EDAT
+    date_start: "2025/01/01"
+    date_end: "2026/07/18"
+    batch_size: 100
+    email_environment_variable: NCBI_EMAIL
+    api_key_environment_variable: NCBI_API_KEY
+    source_name: pmc_open_access
+    license: article-level
+    language: en
+    streaming: true
+    resume: true
+    splits: { train: all }
+    max_documents: { train: 50000 }
+    output_directory: datasets/raw/pmc_open_access
+
+  wikidoc:
+    source_type: huggingface
+    hub_name: epfl-llm/guidelines
+    revision: a8f0269471088e4c8aafe2319f30c14b2fad82bc
+    config_name: null
+    source_name: wikidoc
+    license: common-crawl-terms-review
+    language: en
+    streaming: true
+    splits: { train: train }
+    max_documents: { train: 37500 }
+    output_directory: datasets/raw/wikidoc
+
+  alpaca:
+    source_type: huggingface
+    hub_name: tatsu-lab/alpaca
+    revision: dce01c9b08f87459cf36a430d809084718273017
+    config_name: null
+    source_name: alpaca
+    license: cc-by-nc-4.0
+    language: en
+    streaming: true
+    splits: { train: train }
+    max_documents: { train: 52002 }
+    output_directory: datasets/raw/alpaca
+
+  medalpaca:
+    source_type: huggingface
+    hub_name: medalpaca/medical_meadow_medical_flashcards
+    revision: 7597b32036d67c731cb91bae4f49717fcfe5d5f0
+    config_name: null
+    source_name: medalpaca
+    license: cc-unspecified-review
+    language: en
+    streaming: true
+    splits: { train: train }
+    max_documents: { train: 33955 }
+    output_directory: datasets/raw/medalpaca
+
+  medinstruct:
+    source_type: huggingface
+    hub_name: xz97/MedInstruct
+    revision: 2934ad53c8250ba4e4130464a6dae3139d1053de
+    config_name: null
+    data_files: data/MedInstruct-52k.json
+    source_name: medinstruct
+    license: cc-by-nc-4.0
+    language: en
+    streaming: true
+    splits: { train: train }
+    max_documents: { train: 52000 }
+    output_directory: datasets/raw/medinstruct
+
+  chatdoctor:
+    source_type: huggingface
+    hub_name: avaliev/chat_doctor
+    revision: 19646f30de72c3890c6e0bc67579cbb538076822
+    config_name: null
+    source_name: chatdoctor
+    license: apache-2.0
+    language: en
+    streaming: true
+    splits: { train: train, validation: validation, test: test }
+    max_documents: { train: 100000, validation: 10000, test: 10000 }
+    output_directory: datasets/raw/chatdoctor
+
+  pubmedqa:
+    source_type: huggingface
+    hub_name: qiaojin/PubMedQA
+    revision: 9001f2853fb87cab8d220904e0de81ac6973b318
+    config_name: pqa_labeled
+    source_name: pubmedqa
+    license: mit
+    language: en
+    streaming: true
+    splits: { train: train }
+    max_documents: { train: 1000 }
+    output_directory: datasets/raw/pubmedqa
+
+  openmedinstruct:
+    source_type: huggingface
+    hub_name: OrionLLM/OpenMedicalInstruct
+    revision: a043e8119cca13ab61acded509f8726a5a107ab1
+    config_name: null
+    source_name: openmedinstruct
+    license: apache-2.0
+    language: en
+    streaming: true
+    splits: { train: train }
+    max_documents: { train: 52000 }
+    output_directory: datasets/raw/openmedinstruct
+
   tinystories:
+    source_type: huggingface
     hub_name: roneneldan/TinyStories
+    revision: f54c09fd23315a6f9c86f9dc80f725de7d8f9c64
     config_name: null
     source_name: tinystories
     license: cdla-sharing-1.0
@@ -15,13 +195,15 @@ datasets:
       validation: validation
 
     max_documents:
-      train: 10000
+      train: 200000
       validation: 1000
 
     output_directory: datasets/raw/tinystories
 
   wikitext103:
+    source_type: huggingface
     hub_name: Salesforce/wikitext
+    revision: b08601e04326c79dfdd32d625aee71d232d685c3
     config_name: wikitext-103-raw-v1
     source_name: wikitext103
     license: cc-by-sa-3.0-and-gfdl
@@ -34,14 +216,16 @@ datasets:
       test: test
 
     max_documents:
-      train: 10000
+      train: 52084
       validation: 1000
       test: 1000
 
     output_directory: datasets/raw/wikitext103
 
   wikipedia:
+    source_type: huggingface
     hub_name: wikimedia/wikipedia
+    revision: b04c8d1ceb2f5cd4588862100d08de323dccfbaa
     config_name: 20231101.en
     source_name: wikipedia
     license: cc-by-sa-3.0-and-gfdl
@@ -53,7 +237,7 @@ datasets:
       train: train
 
     max_documents:
-      train: 10000
+      train: 116667
 
     output_directory: datasets/raw/wikipedia
 
@@ -121,6 +305,7 @@ deduplication:
 
   global:
     output_directory: datasets/interim/global_deduplicated
+    auto_include_configured_datasets: true
 
     priority:
       - dataset: wikitext103
@@ -149,6 +334,7 @@ deduplication:
 
   near:
     output_directory: datasets/interim/near_deduplicated
+    auto_include_configured_datasets: true
 
     # Word-level comparison settings
     shingle_size: 5
@@ -164,6 +350,11 @@ deduplication:
 
     # A document is removed only after exact Jaccard verification.
     similarity_threshold: 0.90
+
+    # Bound the rolling LSH/exact-Jaccard index so RAM usage does not grow
+    # with the entire corpus. Completed input files are skipped on restart.
+    max_indexed_documents: 2000
+    resume: true
 
     # Preserve signatures and similarity information in metadata/reports.
     store_signature_metadata: true
@@ -198,6 +389,7 @@ deduplication:
 language_verification:
   model_path: models/language_identification/lid.176.bin
   output_directory: datasets/interim/language_verified
+  auto_include_configured_datasets: true
 
   expected_language: en
   minimum_confidence: 0.80
@@ -244,6 +436,23 @@ language_verification:
 
 quality_filtering:
   output_directory: datasets/interim/quality_filtered
+  auto_include_configured_datasets: true
+
+  profiles:
+    pretraining:
+      min_words: 20
+      max_words: 100000
+      min_sentences: 2
+    sft:
+      min_words: 3
+      max_words: 20000
+      min_sentences: 0
+      min_alphabetic_ratio: 0.35
+      max_symbol_ratio: 0.35
+      hard_rules:
+        - too_many_words
+        - low_alphabetic_ratio
+        - high_symbol_ratio
 
   pass_score: 0.80
   review_score: 0.60
@@ -334,6 +543,7 @@ quality_filtering:
 
 license_validation:
   output_directory: datasets/interim/license_validated
+  auto_include_configured_datasets: true
 
   missing_license_action: reject
   unknown_license_action: reject
@@ -342,6 +552,120 @@ license_validation:
   store_policy_metadata: true
 
   allowed_licenses:
+    mit:
+      name: MIT License
+      allowed: true
+      attribution_required: true
+      share_alike_required: false
+      commercial_use: true
+      redistribution: true
+
+    cc0-1.0:
+      name: Creative Commons CC0 1.0
+      allowed: true
+      attribution_required: false
+      share_alike_required: false
+      commercial_use: true
+      redistribution: true
+
+    cc-by-4.0:
+      name: Creative Commons Attribution 4.0
+      allowed: true
+      attribution_required: true
+      share_alike_required: false
+      commercial_use: true
+      redistribution: true
+
+    cc-by-3.0:
+      name: Creative Commons Attribution 3.0
+      allowed: true
+      attribution_required: true
+      share_alike_required: false
+      commercial_use: true
+      redistribution: true
+
+    cc-by-sa:
+      name: Creative Commons Attribution-ShareAlike
+      allowed: true
+      attribution_required: true
+      share_alike_required: true
+      commercial_use: true
+      redistribution: true
+
+    cc-by-nc:
+      name: Creative Commons Attribution-NonCommercial
+      allowed: true
+      requires_review: true
+      attribution_required: true
+      share_alike_required: false
+      commercial_use: false
+      redistribution: true
+
+    cc-by-nc-4.0:
+      name: Creative Commons Attribution-NonCommercial 4.0
+      allowed: true
+      requires_review: true
+      attribution_required: true
+      share_alike_required: false
+      commercial_use: false
+      redistribution: true
+
+    public-domain-review:
+      name: Public-domain assertion requiring jurisdiction review
+      allowed: true
+      requires_review: true
+      attribution_required: false
+      share_alike_required: false
+      commercial_use: true
+      redistribution: true
+
+    pubmed-terms-record-level-copyright:
+      name: PubMed terms with record-level copyright
+      allowed: true
+      requires_review: true
+      attribution_required: true
+      share_alike_required: false
+      commercial_use: false
+      redistribution: false
+
+    common-crawl-terms-review:
+      name: Common Crawl terms and source-level rights review
+      allowed: true
+      requires_review: true
+      attribution_required: true
+      share_alike_required: false
+      commercial_use: false
+      redistribution: false
+
+    cc-unspecified-review:
+      name: Unspecified Creative Commons license
+      allowed: true
+      requires_review: true
+      attribution_required: true
+      share_alike_required: false
+      commercial_use: false
+      redistribution: false
+
+    apache-2.0:
+      name: Apache License 2.0
+      allowed: true
+      attribution_required: true
+      share_alike_required: false
+      commercial_use: true
+      redistribution: true
+      notes:
+        - Preserve the license and required notices.
+
+    odc-by-1.0:
+      name: Open Data Commons Attribution License 1.0
+      allowed: true
+      attribution_required: true
+      share_alike_required: false
+      commercial_use: true
+      redistribution: true
+      notes:
+        - Attribute the database and review upstream Common Crawl terms.
+
     cdla-sharing-1.0:
       name: Community Data License Agreement - Sharing 1.0
       allowed: true
@@ -376,6 +700,27 @@ license_validation:
         - Review invariant-section requirements when applicable.
 
   license_aliases:
+    mit: [mit, mit-license]
+    cc0-1.0: [cc0, cc0-1.0]
+    cc-by-4.0: [cc-by-4.0, cc-by-4, "cc by 4.0"]
+    cc-by-3.0: [cc-by-3.0, cc-by-3, "cc by 3.0"]
+    cc-by-sa: [cc-by-sa]
+    cc-by-nc: [cc-by-nc]
+    cc-by-nc-4.0: [cc-by-nc-4.0, "cc by-nc 4.0"]
+    public-domain-review: [public-domain-review, public-domain, pddl]
+    pubmed-terms-record-level-copyright: [pubmed-terms-record-level-copyright]
+    common-crawl-terms-review: [common-crawl-terms-review]
+    cc-unspecified-review: [cc-unspecified-review, cc]
+
+    apache-2.0:
+      - apache-2.0
+      - apache 2.0
+
+    odc-by-1.0:
+      - odc-by
+      - odc-by-1.0
+      - open-data-commons-attribution-license-1.0
+
     cdla-sharing-1.0:
       - cdla-sharing-1.0
       - cdla sharing 1.0
@@ -393,6 +738,34 @@ license_validation:
       - gnu free documentation license
 
   datasets:
+    project_gutenberg_public_domain:
+      accepted_licenses: [public-domain-review]
+    pubmed_abstracts:
+      accepted_licenses: [pubmed-terms-record-level-copyright]
+    pmc_open_access:
+      accepted_licenses: [cc0-1.0, cc-by-4.0, cc-by-3.0, cc-by-sa, cc-by-nc]
+    wikidoc:
+      accepted_licenses: [common-crawl-terms-review]
+    alpaca:
+      accepted_licenses: [cc-by-nc-4.0]
+    medalpaca:
+      accepted_licenses: [cc-unspecified-review]
+    medinstruct:
+      accepted_licenses: [cc-by-nc-4.0]
+    chatdoctor:
+      accepted_licenses: [apache-2.0]
+    pubmedqa:
+      accepted_licenses: [mit]
+    openmedinstruct:
+      accepted_licenses: [apache-2.0]
+    fineweb_edu:
+      accepted_licenses:
+        - odc-by-1.0
+
+    medmcqa:
+      accepted_licenses:
+        - apache-2.0
+
     tinystories:
       accepted_licenses:
         - cdla-sharing-1.0
@@ -437,13 +810,14 @@ license_validation:
 toxicity_audit:
   model_name: unitary/toxic-bert
   output_directory: datasets/interim/toxicity_audited
+  auto_include_configured_datasets: true
 
   # Runtime
   device: auto
   batch_size: 8
   max_length: 512
 
-  max_documents: 100 # max_documents: null
+  max_documents: 100
 
   # Long-document sampling
   max_chunks_per_document: 5
@@ -554,6 +928,7 @@ toxicity_audit:
 
 corpus_assembly:
   output_directory: datasets/processed
+  input_stage: toxicity_audited
 
   # Include documents marked for review by quality or license stages.
   # Supported values: include, exclude
@@ -596,35 +971,35 @@ corpus_assembly:
     - dataset: wikitext103
       source_split: test
       output_split: test
-      input_path: datasets/interim/license_validated/wikitext103/test.jsonl
+      input_path: datasets/interim/toxicity_audited/wikitext103/test.jsonl
 
     - dataset: wikitext103
       source_split: validation
       output_split: validation
-      input_path: datasets/interim/license_validated/wikitext103/validation.jsonl
+      input_path: datasets/interim/toxicity_audited/wikitext103/validation.jsonl
 
     - dataset: tinystories
       source_split: validation
       output_split: validation
-      input_path: datasets/interim/license_validated/tinystories/validation.jsonl
+      input_path: datasets/interim/toxicity_audited/tinystories/validation.jsonl
 
     - dataset: wikipedia
       source_split: train
       output_split: train
-      input_path: datasets/interim/license_validated/wikipedia/train.jsonl
+      input_path: datasets/interim/toxicity_audited/wikipedia/train.jsonl
 
     - dataset: wikitext103
       source_split: train
       output_split: train
-      input_path: datasets/interim/license_validated/wikitext103/train.jsonl
+      input_path: datasets/interim/toxicity_audited/wikitext103/train.jsonl
 
     - dataset: tinystories
       source_split: train
       output_split: train
-      input_path: datasets/interim/license_validated/tinystories/train.jsonl
+      input_path: datasets/interim/toxicity_audited/tinystories/train.jsonl
 
 tokenizer:
-  training_corpus: datasets/processed/tokenizer_corpus.txt
+  training_corpus: datasets/processed/corpora/tokenizer_60m/corpus.txt
   output_directory: artifacts/tokenizer
 
   algorithm: byte_level_bpe
@@ -644,6 +1019,32 @@ tokenizer:
     unknown_token: "<unk>"
     beginning_of_sequence_token: "<bos>"
     end_of_sequence_token: "<eos>"
+
+  evaluation:
+    output_path: artifacts/tokenizer/tokenizer_metrics.json
+    inputs:
+      - name: train
+        path: datasets/processed/train.jsonl
+        max_documents: 1000
+      - name: validation
+        path: datasets/processed/validation.jsonl
+        max_documents: 1000
+      - name: test
+        path: datasets/processed/test.jsonl
+        max_documents: 1000
+    store_sample_encodings: true
+    maximum_sample_encodings: 20
+    medical_terms:
+      - cardiomyopathy
+      - electroencephalography
+      - gastroenterology
+      - immunohistochemistry
+      - pharmacokinetics
+      - neurotransmitter
+      - cardiovascular
+      - schizophrenia
+      - acetylcholine
+      - adenocarcinoma
 
   comparison:
     custom_tokenizer_path: artifacts/tokenizer
@@ -681,9 +1082,8 @@ tokenizer:
       - diagnosis
       - prognosis
 
-tokenized_dataset:
+tokenized_dataset_defaults:
   tokenizer_path: artifacts/tokenizer
-  output_directory: datasets/tokenized
 
   # Each stored sample contains sequence_length + 1 tokens.
   # Dataset returns 256 input tokens and their 256 next-token labels.
@@ -702,10 +1102,30 @@ tokenized_dataset:
   # Optional development limit applied to all splits.
   max_documents: null
 
-  splits:
-    train:
-      input_path: datasets/processed/train.jsonl
-    validation:
-      input_path: datasets/processed/validation.jsonl
-    test:
-      input_path: datasets/processed/test.jsonl
+tokenized_datasets:
+  stage_a:
+    output_directory: datasets/tokenized/stage_a
+    splits:
+      train:
+        input_path: datasets/processed/corpora/stage_a_325m/train.jsonl
+
+  continual_medical:
+    output_directory: datasets/tokenized/continual_medical
+    splits:
+      train:
+        input_path: datasets/processed/corpora/continual_medical_225m/train.jsonl
+
+  evaluation:
+    output_directory: datasets/tokenized/evaluation
+    splits:
+      validation:
+        input_path: datasets/processed/validation.jsonl
+      test:
+        input_path: datasets/processed/test.jsonl
+
+sft_preparation:
+  input_path: datasets/processed/corpora/sft_balanced/train.jsonl
+  tokenizer_path: artifacts/tokenizer
+  output_directory: datasets/tokenized/sft
+  max_length: 1024
+  validation_fraction: 0.05

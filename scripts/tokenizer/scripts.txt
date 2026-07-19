@@ -14,10 +14,15 @@ python scripts/tokenizer/compare_tokenizers.py --config configs/tokenizer.yaml -
 # Tokenize
 python scripts/tokenizer/build_tokenized_dataset.py --config configs/data.yaml
 
+# Tokenize one phase
+python scripts/tokenizer/build_tokenized_dataset.py --phase stage_a
+python scripts/tokenizer/build_tokenized_dataset.py --phase continual_medical
+python scripts/tokenizer/build_tokenized_dataset.py --phase evaluation
+
 # For Overwrite
 python scripts/tokenizer/build_tokenized_dataset.py --config configs/data.yaml --overwrite
 
 
 
 # Check Tokenized dataset
-scripts/tokenizer/check_tokenized_dataset.py
+python scripts/tokenizer/check_tokenized_dataset.py

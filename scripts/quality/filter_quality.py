@@ -12,6 +12,7 @@ import yaml
 from medical_slm.data.quality.pipeline import (
     run_quality_filtering,
 )
+from medical_slm.data.pipeline_inventory import build_stage_priority
 
 
 LOGGER = logging.getLogger(__name__)
@@ -83,8 +84,17 @@ def run_configured_quality_filtering(
             f"missing fields: {missing}"
         )
 
+    priority = (
+        build_stage_priority(
+            config,
+            input_directory="datasets/interim/language_verified",
+            include_profile=True,
+        )
+        if quality_config.get("auto_include_configured_datasets", False)
+        else quality_config["priority"]
+    )
     return run_quality_filtering(
-        priority=quality_config["priority"],
+        priority=priority,
         output_directory=Path(
             quality_config["output_directory"]
         ),

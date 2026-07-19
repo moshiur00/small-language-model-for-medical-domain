@@ -1,1 +1,17 @@
 python scripts/assembly/build_corpus.py
+
+python scripts/assembly/build_phase_corpora.py
+
+
+
+# After tokenizer training
+python scripts/assembly/build_phase_corpora.py `
+  --input-directory datasets/interim/license_validated `
+  --output-directory datasets/processed/corpora `
+  --tokenizer-path artifacts/tokenizer `
+  --phases stage_a_325m continual_medical_225m
+
+
+# Onle Line
+python scripts/assembly/build_phase_corpora.py --input-directory datasets/interim/license_validated --output-directory datasets/processed/corpora --tokenizer-path artifacts/tokenizer --phases stage_a_325m continual_medical_225m
+

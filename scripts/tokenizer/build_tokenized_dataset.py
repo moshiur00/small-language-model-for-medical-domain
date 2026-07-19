@@ -37,6 +37,15 @@ def parse_arguments() -> argparse.Namespace:
         help="Delete an existing tokenized dataset before rebuilding it.",
     )
     parser.add_argument(
+        "--phase",
+        action="append",
+        default=None,
+        help=(
+            "Build only this configured phase. Repeat for multiple phases; "
+            "omit to build every phase."
+        ),
+    )
+    parser.add_argument(
         "--max-documents",
         type=int,
         default=None,
@@ -63,27 +72,47 @@ def main() -> None:
     arguments = parse_arguments()
     project_config = load_config(arguments.config)
 
-    tokenized_config = project_config.get("tokenized_dataset")
-    if not isinstance(tokenized_config, dict):
+    defaults = project_config.get("tokenized_dataset_defaults")
+    phase_configs = project_config.get("tokenized_datasets")
+    if not isinstance(defaults, dict) or not isinstance(phase_configs, dict):
         raise ValueError(
-            "configs/data.yaml must contain a tokenized_dataset mapping."
+            "configs/data.yaml must contain tokenized_dataset_defaults and "
+            "tokenized_datasets mappings."
         )
-
-    effective_config = dict(tokenized_config)
-
-    if arguments.overwrite:
-        effective_config["overwrite"] = True
 
     if arguments.max_documents is not None:
         if arguments.max_documents < 1:
             raise ValueError("--max-documents must be at least one.")
-        effective_config["max_documents"] = arguments.max_documents
 
-    manifest = build_tokenized_dataset(effective_config)
+    selected_phases = arguments.phase or list(phase_configs)
+    unknown_phases = set(selected_phases) - set(phase_configs)
+    if unknown_phases:
+        raise ValueError(
+            "Unknown tokenization phases: " + ", ".join(sorted(unknown_phases))
+        )
 
-    logging.getLogger(__name__).info(
-        "Created %d packed sequences.",
-        manifest["totals"]["sequences"],
+    logger = logging.getLogger(__name__)
+    total_sequences = 0
+    for phase in selected_phases:
+        phase_config = phase_configs[phase]
+        if not isinstance(phase_config, dict):
+            raise TypeError(f"Tokenized phase '{phase}' must be a mapping.")
+        effective_config = {**defaults, **phase_config}
+        if arguments.overwrite:
+            effective_config["overwrite"] = True
+        if arguments.max_documents is not None:
+            effective_config["max_documents"] = arguments.max_documents
+
+        logger.info("Building tokenized phase '%s'.", phase)
+        manifest = build_tokenized_dataset(effective_config)
+        phase_sequences = manifest["totals"]["sequences"]
+        total_sequences += phase_sequences
+        logger.info("Built %s: sequences=%d", phase, phase_sequences)
+
+    logger.info(
+        "Created %d packed sequences across %d phases.",
+        total_sequences,
+        len(selected_phases),
     )
 
 

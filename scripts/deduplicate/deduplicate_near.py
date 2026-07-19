@@ -12,6 +12,7 @@ import yaml
 from medical_slm.data.deduplication.minhash import (
     run_global_near_deduplication,
 )
+from medical_slm.data.pipeline_inventory import build_stage_priority
 
 
 LOGGER = logging.getLogger(__name__)
@@ -78,8 +79,13 @@ def run_configured_near_deduplication(
             f"fields: {missing}"
         )
 
+    priority = (
+        build_stage_priority(config, input_directory="datasets/interim/global_deduplicated")
+        if near_config.get("auto_include_configured_datasets", False)
+        else near_config["priority"]
+    )
     return run_global_near_deduplication(
-        priority=near_config["priority"],
+        priority=priority,
         output_directory=Path(
             near_config["output_directory"]
         ),

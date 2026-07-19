@@ -315,6 +315,16 @@ def evaluate_license_policy(
             "reject"
         )
 
+    review_required = [
+        license_id
+        for license_id in declared_licenses
+        if license_id in allowed_licenses
+        and bool(allowed_licenses[license_id].get("requires_review", False))
+    ]
+    if review_required:
+        reasons.append("license_requires_manual_review")
+        decisions.append("review")
+
     if not decisions:
         decisions.append(
             "pass"

@@ -8,7 +8,19 @@ from pathlib import Path
 
 from medical_slm.data.download import Standardizer, download_dataset
 from medical_slm.data.standardizers import (
+    standardize_alpaca,
+    standardize_chatdoctor,
+    standardize_fineweb_edu,
+    standardize_medalpaca,
+    standardize_medinstruct,
+    standardize_medmcqa,
+    standardize_openmedinstruct,
+    standardize_pmc_open_access,
+    standardize_project_gutenberg_public_domain,
+    standardize_pubmed_abstracts,
+    standardize_pubmedqa,
     standardize_tinystories,
+    standardize_wikidoc,
     standardize_wikipedia,
     standardize_wikitext,
 )
@@ -21,6 +33,18 @@ STANDARDIZERS: dict[str, Standardizer] = {
     "tinystories": standardize_tinystories,
     "wikitext103": standardize_wikitext,
     "wikipedia": standardize_wikipedia,
+    "fineweb_edu": standardize_fineweb_edu,
+    "project_gutenberg_public_domain": standardize_project_gutenberg_public_domain,
+    "pubmed_abstracts": standardize_pubmed_abstracts,
+    "pmc_open_access": standardize_pmc_open_access,
+    "wikidoc": standardize_wikidoc,
+    "medmcqa": standardize_medmcqa,
+    "pubmedqa": standardize_pubmedqa,
+    "alpaca": standardize_alpaca,
+    "medalpaca": standardize_medalpaca,
+    "medinstruct": standardize_medinstruct,
+    "chatdoctor": standardize_chatdoctor,
+    "openmedinstruct": standardize_openmedinstruct,
 }
 
 
@@ -40,7 +64,7 @@ def parse_arguments() -> argparse.Namespace:
 
     parser.add_argument(
         "dataset",
-        choices=sorted(STANDARDIZERS),
+        choices=["all", *sorted(STANDARDIZERS)],
         help="Dataset configuration to process.",
     )
 
@@ -59,19 +83,20 @@ def main() -> None:
     configure_logging()
     arguments = parse_arguments()
 
-    standardizer = STANDARDIZERS[arguments.dataset]
-
-    split_counts = download_dataset(
-        config_path=arguments.config,
-        dataset_name=arguments.dataset,
-        standardizer=standardizer,
+    dataset_names = (
+        list(STANDARDIZERS) if arguments.dataset == "all" else [arguments.dataset]
     )
-
-    LOGGER.info(
-        "Completed dataset=%s split_counts=%s",
-        arguments.dataset,
-        split_counts,
-    )
+    for dataset_name in dataset_names:
+        split_counts = download_dataset(
+            config_path=arguments.config,
+            dataset_name=dataset_name,
+            standardizer=STANDARDIZERS[dataset_name],
+        )
+        LOGGER.info(
+            "Completed dataset=%s split_counts=%s",
+            dataset_name,
+            split_counts,
+        )
 
 
 if __name__ == "__main__":

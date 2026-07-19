@@ -12,6 +12,7 @@ import yaml
 from medical_slm.data.licensing.pipeline import (
     run_license_validation,
 )
+from medical_slm.data.pipeline_inventory import build_stage_priority
 
 
 LOGGER = logging.getLogger(__name__)
@@ -90,10 +91,13 @@ def run_configured_license_validation(
             f"{', '.join(sorted(missing_fields))}"
         )
 
+    priority = (
+        build_stage_priority(config, input_directory="datasets/interim/quality_filtered")
+        if license_config.get("auto_include_configured_datasets", False)
+        else license_config["priority"]
+    )
     return run_license_validation(
-        priority=license_config[
-            "priority"
-        ],
+        priority=priority,
         output_directory=Path(
             license_config[
                 "output_directory"

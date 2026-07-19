@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Iterable, Iterator, Mapping
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,7 @@ from medical_slm.data.download import (
     download_dataset,
     load_config,
     resolve_limit,
+    write_resumable_jsonl,
 )
 from medical_slm.data.jsonl import read_jsonl
 
@@ -257,6 +259,49 @@ def test_download_dataset_without_config_name(
     ]
 
 
+def test_download_dataset_loads_project_root_dotenv(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_directory = tmp_path / "configs"
+    config_directory.mkdir()
+    output_directory = tmp_path / "output"
+    config = {
+        "datasets": {
+            "example_dataset": {
+                "hub_name": "organization/example",
+                "config_name": None,
+                "source_name": "example",
+                "license": "test-license",
+                "language": "en",
+                "streaming": True,
+                "splits": {"train": "train"},
+                "max_documents": {"train": 1},
+                "output_directory": str(output_directory),
+            }
+        }
+    }
+    config_path = config_directory / "data.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    (tmp_path / ".env").write_text(
+        "NCBI_EMAIL=dotenv@example.org\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("NCBI_EMAIL", raising=False)
+    monkeypatch.setattr(
+        "medical_slm.data.download.load_dataset",
+        lambda **_: [{"text": "Document."}],
+    )
+
+    download_dataset(
+        config_path=config_path,
+        dataset_name="example_dataset",
+        standardizer=fake_standardizer,
+    )
+
+    assert os.environ["NCBI_EMAIL"] == "dotenv@example.org"
+
+
 def test_unknown_dataset_raises_error(tmp_path: Path) -> None:
     config_path = tmp_path / "data.yaml"
 
@@ -305,6 +350,36 @@ def test_load_config_rejects_missing_file(tmp_path: Path) -> None:
 
     with pytest.raises(FileNotFoundError):
         load_config(missing_path)
+
+
+def test_resumable_writer_appends_unique_source_records(tmp_path: Path) -> None:
+    output_path = tmp_path / "pubmed.jsonl"
+    existing = {
+        "id": "old-id",
+        "source": "pubmed_abstracts",
+        "text": "Existing",
+        "metadata": {"pmid": "1"},
+    }
+    output_path.write_text(json.dumps(existing) + "\n", encoding="utf-8")
+    duplicate = {**existing, "id": "different-generated-id"}
+    new = {
+        "id": "new-id",
+        "source": "pubmed_abstracts",
+        "text": "New",
+        "metadata": {"pmid": "2"},
+    }
+
+    count = write_resumable_jsonl(
+        [duplicate, new],
+        output_path,
+        max_documents=2,
+    )
+
+    assert count == 2
+    assert [record["metadata"]["pmid"] for record in read_jsonl(output_path)] == [
+        "1",
+        "2",
+    ]
 
 
 def test_load_config_requires_datasets_section(
