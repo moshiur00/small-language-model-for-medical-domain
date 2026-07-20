@@ -90,3 +90,5 @@ profile/
 # Local caches
 .cache/
 huggingface/
+
+artifacts/training/

@@ -1,1 +1,0 @@
-{"event": "overfit_one_batch", "metrics": {"gradient_norm": 1.965193748474121, "learning_rate": 3.698630136986301e-05, "loss": 9.090787887573242, "optimizer_stepped": true, "token_accuracy": 0.045166015625, "tokens_per_second": 598.3075462932413}, "timestamp": "2026-07-20T21:54:21.414852+00:00", "update": 10}
