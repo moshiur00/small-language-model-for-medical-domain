@@ -90,3 +90,6 @@ profile/
 # Local caches
 .cache/
 huggingface/
+
+artifacts/training/
+stage-a-data.tar
