@@ -20,3 +20,8 @@ def test_training_config_rejects_unknown_fields() -> None:
 def test_max_updates_cannot_exceed_schedule() -> None:
     with pytest.raises(ValueError, match="max_updates"):
         StageATrainingConfig(total_updates=10, max_updates=11, warmup_updates=1)
+
+
+def test_checkpoint_retention_must_be_positive() -> None:
+    with pytest.raises(ValueError, match="keep_recent_checkpoints"):
+        StageATrainingConfig(keep_recent_checkpoints=0)

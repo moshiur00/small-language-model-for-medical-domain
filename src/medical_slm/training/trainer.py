@@ -19,6 +19,8 @@ from medical_slm.data.tokenization.manifest import calculate_sha256
 from medical_slm.model import DecoderConfig, DecoderModel
 from medical_slm.training.checkpoint import (
     load_checkpoint,
+    mirror_checkpoint,
+    prune_checkpoints,
     resolve_checkpoint_pointer,
     save_checkpoint,
     write_checkpoint_pointer,
@@ -136,6 +138,11 @@ class StageATrainer:
         self.state = TrainingState()
         self.output_directory = Path(training_config.output_directory)
         self.checkpoint_root = self.output_directory / "checkpoints"
+        self.checkpoint_backup_root = (
+            Path(training_config.checkpoint_backup_directory)
+            if training_config.checkpoint_backup_directory is not None
+            else None
+        )
         self.metric_logger = JsonlMetricLogger(self.output_directory / "metrics.jsonl")
 
     def _loader(self) -> DataLoader[dict[str, torch.Tensor]]:
@@ -311,7 +318,31 @@ class StageATrainer:
         write_checkpoint_pointer(self.checkpoint_root, "latest", name)
         if is_best:
             write_checkpoint_pointer(self.checkpoint_root, "best_validation", name)
+        if self.checkpoint_backup_root is not None:
+            mirror_checkpoint(destination, self.checkpoint_backup_root)
+            write_checkpoint_pointer(self.checkpoint_backup_root, "latest", name)
+            if is_best:
+                write_checkpoint_pointer(
+                    self.checkpoint_backup_root,
+                    "best_validation",
+                    name,
+                )
+        self._prune_checkpoints()
         return destination
+
+    def _prune_checkpoints(self) -> None:
+        config = self.training_config
+        prune_checkpoints(
+            self.checkpoint_root,
+            keep_recent=config.keep_recent_checkpoints,
+            milestone_interval=config.milestone_interval,
+        )
+        if self.checkpoint_backup_root is not None:
+            prune_checkpoints(
+                self.checkpoint_backup_root,
+                keep_recent=config.keep_recent_checkpoints,
+                milestone_interval=config.milestone_interval,
+            )
 
     def train(self) -> TrainingState:
         """Train until the configured update or epoch limit."""
@@ -393,7 +424,22 @@ class StageATrainer:
                 ):
                     self.state.epoch += 1
                     self.state.batch_cursor = 0
-            self._save()
+            final_checkpoint = self._save()
+            if (
+                self.state.update == config.total_updates
+                and self.state.epoch >= config.max_epochs
+            ):
+                write_checkpoint_pointer(
+                    self.checkpoint_root,
+                    "final_stage_a",
+                    final_checkpoint.name,
+                )
+                if self.checkpoint_backup_root is not None:
+                    write_checkpoint_pointer(
+                        self.checkpoint_backup_root,
+                        "final_stage_a",
+                        final_checkpoint.name,
+                    )
             return self.state
         finally:
             self.metric_logger.close()

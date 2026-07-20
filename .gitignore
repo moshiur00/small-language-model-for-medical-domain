@@ -92,3 +92,4 @@ profile/
 huggingface/
 
 artifacts/training/
+stage-a-data.tar

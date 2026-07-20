@@ -20,6 +20,12 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--resume", nargs="?", const="latest", default=None)
     parser.add_argument("--max-updates", type=int, default=None)
     parser.add_argument(
+        "--checkpoint-backup-directory",
+        type=Path,
+        default=None,
+        help="Optional second filesystem for verified checkpoint mirrors.",
+    )
+    parser.add_argument(
         "--overfit-one-batch",
         action="store_true",
         help="Repeatedly optimize one real Stage A batch as an alignment diagnostic.",
@@ -44,6 +50,12 @@ def main() -> None:
     if arguments.max_updates is not None:
         values = training_config.to_dict()
         values["max_updates"] = arguments.max_updates
+        training_config = StageATrainingConfig.from_mapping(values)
+    if arguments.checkpoint_backup_directory is not None:
+        values = training_config.to_dict()
+        values["checkpoint_backup_directory"] = str(
+            arguments.checkpoint_backup_directory
+        )
         training_config = StageATrainingConfig.from_mapping(values)
     trainer = StageATrainer(training_config, load_model_config(arguments.model_config))
     if arguments.resume is not None:

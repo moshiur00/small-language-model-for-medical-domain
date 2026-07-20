@@ -17,6 +17,7 @@ class StageATrainingConfig:
     validation_directory: str = "datasets/tokenized/evaluation/validation"
     tokenizer_json: str = "artifacts/tokenizer/tokenizer.json"
     output_directory: str = "artifacts/training/stage_a"
+    checkpoint_backup_directory: str | None = None
     seed: int = 42
     device: str = "auto"
     precision: str = "auto"
@@ -38,6 +39,8 @@ class StageATrainingConfig:
     log_interval: int = 10
     validation_interval: int = 250
     checkpoint_interval: int = 500
+    keep_recent_checkpoints: int = 2
+    milestone_interval: int = 1_000
 
     def __post_init__(self) -> None:
         positive_integers = (
@@ -50,6 +53,8 @@ class StageATrainingConfig:
             "log_interval",
             "validation_interval",
             "checkpoint_interval",
+            "keep_recent_checkpoints",
+            "milestone_interval",
         )
         for field_name in positive_integers:
             if getattr(self, field_name) <= 0:

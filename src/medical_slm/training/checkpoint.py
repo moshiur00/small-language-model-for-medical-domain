@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import random
 import shutil
+import sys
 import uuid
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -132,6 +134,27 @@ def _verify_manifest(checkpoint_directory: Path) -> dict[str, Any]:
     return manifest
 
 
+def verify_checkpoint(checkpoint_directory: str | Path) -> dict[str, Any]:
+    """Verify every checkpoint artifact and return its manifest."""
+    return _verify_manifest(Path(checkpoint_directory))
+
+
+def capture_environment() -> dict[str, Any]:
+    """Capture software and accelerator identity for portable resume audits."""
+    return {
+        "python": sys.version,
+        "platform": platform.platform(),
+        "torch": torch.__version__,
+        "cuda_runtime": torch.version.cuda,
+        "cudnn": torch.backends.cudnn.version(),
+        "cuda_available": torch.cuda.is_available(),
+        "gpu_names": [
+            torch.cuda.get_device_name(index)
+            for index in range(torch.cuda.device_count())
+        ],
+    }
+
+
 def save_checkpoint(
     *,
     checkpoint_root: str | Path,
@@ -179,6 +202,7 @@ def save_checkpoint(
             },
         )
         _write_json(temporary / "metrics_tail.json", list(recent_metrics))
+        _write_json(temporary / "environment.json", capture_environment())
 
         artifact_paths = sorted(
             path
@@ -207,6 +231,78 @@ def save_checkpoint(
             shutil.rmtree(temporary)
         raise
     return destination
+
+
+def mirror_checkpoint(
+    checkpoint_directory: str | Path,
+    backup_root: str | Path,
+) -> Path:
+    """Copy a completed checkpoint to another filesystem and publish atomically."""
+    source = Path(checkpoint_directory)
+    verify_checkpoint(source)
+    root = Path(backup_root)
+    root.mkdir(parents=True, exist_ok=True)
+    destination = root / source.name
+    if destination.exists():
+        verify_checkpoint(destination)
+        return destination
+
+    temporary = root / f".{source.name}.tmp-{uuid.uuid4().hex}"
+    try:
+        shutil.copytree(source, temporary)
+        verify_checkpoint(temporary)
+        _flush_directory(temporary)
+        os.replace(temporary, destination)
+        _flush_directory(root)
+    except BaseException:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+        raise
+    return destination
+
+
+def prune_checkpoints(
+    checkpoint_root: str | Path,
+    *,
+    keep_recent: int,
+    milestone_interval: int,
+) -> list[Path]:
+    """Remove non-pointer, non-milestone checkpoints outside recent retention."""
+    if keep_recent <= 0 or milestone_interval <= 0:
+        raise ValueError("Checkpoint retention values must be greater than zero.")
+    root = Path(checkpoint_root)
+    checkpoints: list[tuple[int, Path]] = []
+    for path in root.glob("checkpoint_[0-9]*"):
+        if not path.is_dir():
+            continue
+        try:
+            update = int(path.name.removeprefix("checkpoint_"))
+        except ValueError:
+            continue
+        verify_checkpoint(path)
+        checkpoints.append((update, path))
+
+    protected_names: set[str] = set()
+    for pointer in root.glob("*.json"):
+        try:
+            value = json.loads(pointer.read_text(encoding="utf-8"))
+            name = value["checkpoint"]
+        except (OSError, json.JSONDecodeError, KeyError, TypeError):
+            continue
+        if isinstance(name, str):
+            protected_names.add(name)
+    for _, path in sorted(checkpoints)[-keep_recent:]:
+        protected_names.add(path.name)
+    for update, path in checkpoints:
+        if update % milestone_interval == 0:
+            protected_names.add(path.name)
+
+    removed = []
+    for _, path in checkpoints:
+        if path.name not in protected_names:
+            shutil.rmtree(path)
+            removed.append(path)
+    return removed
 
 
 def write_checkpoint_pointer(

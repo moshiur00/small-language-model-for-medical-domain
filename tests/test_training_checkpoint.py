@@ -13,6 +13,8 @@ from torch import nn
 from medical_slm.training.checkpoint import (
     CheckpointError,
     load_checkpoint,
+    mirror_checkpoint,
+    prune_checkpoints,
     resolve_checkpoint_pointer,
     save_checkpoint,
     write_checkpoint_pointer,
@@ -220,3 +222,41 @@ def test_checkpoint_does_not_overwrite_immutable_directory(tmp_path: Path) -> No
     with pytest.raises(FileExistsError):
         save_test_checkpoint(tmp_path)
     assert not list(tmp_path.glob(".*.tmp-*"))
+
+
+def test_checkpoint_mirror_is_verified_and_idempotent(tmp_path: Path) -> None:
+    source_root = tmp_path / "source"
+    backup_root = tmp_path / "backup"
+    checkpoint = save_test_checkpoint(source_root)
+    mirrored = mirror_checkpoint(checkpoint, backup_root)
+    assert mirrored.name == checkpoint.name
+    assert (mirrored / "environment.json").is_file()
+    assert mirror_checkpoint(checkpoint, backup_root) == mirrored
+    assert not list(backup_root.glob(".*.tmp-*"))
+
+
+def test_retention_keeps_pointers_recent_and_milestones(tmp_path: Path) -> None:
+    names = [
+        "checkpoint_00000001",
+        "checkpoint_00000002",
+        "checkpoint_00000003",
+        "checkpoint_00000010",
+        "checkpoint_00000011",
+    ]
+    for name in names:
+        save_test_checkpoint(tmp_path, name)
+    write_checkpoint_pointer(tmp_path, "best_validation", names[1])
+    write_checkpoint_pointer(tmp_path, "latest", names[-1])
+
+    removed = prune_checkpoints(
+        tmp_path,
+        keep_recent=2,
+        milestone_interval=10,
+    )
+    assert {path.name for path in removed} == {
+        "checkpoint_00000001",
+        "checkpoint_00000003",
+    }
+    assert (tmp_path / "checkpoint_00000002").is_dir()
+    assert (tmp_path / "checkpoint_00000010").is_dir()
+    assert (tmp_path / "checkpoint_00000011").is_dir()
