@@ -11,6 +11,16 @@ import torch
 SUPPORTED_PRECISIONS = {"auto", "fp32", "bf16", "fp16"}
 
 
+def supports_native_bf16(
+    compute_capability: tuple[int, int],
+    *,
+    torch_reports_support: bool,
+) -> bool:
+    """Return whether CUDA hardware has native BF16 Tensor Core support."""
+    major, _ = compute_capability
+    return torch_reports_support and major >= 8
+
+
 @dataclass(frozen=True)
 class PrecisionPolicy:
     """Resolved numerical precision for one training device."""
@@ -49,13 +59,19 @@ def resolve_precision(
     if resolved_device.type != "cuda":
         raise ValueError(f"Unsupported training device: {resolved_device.type}.")
 
+    native_bf16 = supports_native_bf16(
+        torch.cuda.get_device_capability(resolved_device),
+        torch_reports_support=torch.cuda.is_bf16_supported(),
+    )
     if requested == "auto":
-        requested = "bf16" if torch.cuda.is_bf16_supported() else "fp16"
+        requested = "bf16" if native_bf16 else "fp16"
     if requested == "fp32":
         return PrecisionPolicy("fp32", "cuda", None, False)
     if requested == "bf16":
-        if not torch.cuda.is_bf16_supported():
-            raise ValueError("The selected CUDA device does not support BF16.")
+        if not native_bf16:
+            raise ValueError(
+                "The selected CUDA device does not have native BF16 support."
+            )
         return PrecisionPolicy("bf16", "cuda", torch.bfloat16, False)
     return PrecisionPolicy("fp16", "cuda", torch.float16, True)
 
