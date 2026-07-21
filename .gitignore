@@ -93,3 +93,6 @@ huggingface/
 
 artifacts/training/
 stage-a-data.tar
+artifacts/training/
+artifacts/tokenizer/
+datasets/tokenized/

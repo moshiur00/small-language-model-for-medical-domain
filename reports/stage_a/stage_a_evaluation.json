@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-07-21T14:26:29.466574+00:00",
+  "gpu": "Tesla T4",
+  "precision": "fp16",
+  "selected_checkpoint": "checkpoint_00007250",
+  "source_pointers": {
+    "best_validation": "checkpoint_00007250",
+    "final_stage_a": "checkpoint_00007310"
+  },
+  "test": {
+    "batches": 38,
+    "duration_seconds": 2.3958373890000075,
+    "loss": 3.679167894799388,
+    "perplexity": 39.61341782363614,
+    "samples": 1185,
+    "tokens": 303360
+  },
+  "validation": {
+    "checkpoint_00007250": {
+      "batches": 57,
+      "duration_seconds": 4.198429760999943,
+      "loss": 3.19838276440017,
+      "perplexity": 24.492887380448188,
+      "samples": 1822,
+      "tokens": 466432
+    },
+    "checkpoint_00007310": {
+      "batches": 57,
+      "duration_seconds": 3.5014741269999377,
+      "loss": 3.1987046243962305,
+      "perplexity": 24.50077192987643,
+      "samples": 1822,
+      "tokens": 466432
+    }
+  }
+}

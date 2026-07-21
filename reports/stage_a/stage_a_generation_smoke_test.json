@@ -1,0 +1,51 @@
+{
+  "checkpoint": "checkpoint_00007250",
+  "checkpoint_path": "artifacts\\training\\stage_a\\checkpoints\\checkpoint_00007250",
+  "checkpoint_verification": {
+    "artifacts_verified": 9,
+    "dataset_manifest_sha256": "ac5f8111b861c5665e3ee98e548c1813a793b6bcb245293150317ee1fae39c7c",
+    "format_version": 1
+  },
+  "decoding": {
+    "eos_token_id": 3,
+    "max_new_tokens": 64,
+    "temperature": 0.8,
+    "top_k": 50,
+    "top_p": 0.95
+  },
+  "device": "cpu",
+  "forward_logits_shape": [
+    1,
+    5,
+    16000
+  ],
+  "generated_at": "2026-07-21T15:17:19.150755+00:00",
+  "generations": [
+    {
+      "continuation": " able to learn the processes that we will find in the brain.\nDuring the past 50 years, we have been able to learn the most of the brain's functions. As many as 230 million years ago, we have seen a number of different brain regions and regions, including the brain.\nMostly",
+      "full_text": "The human brain is able to learn the processes that we will find in the brain.\nDuring the past 50 years, we have been able to learn the most of the brain's functions. As many as 230 million years ago, we have seen a number of different brain regions and regions, including the brain.\nMostly",
+      "generated_tokens": 64,
+      "prompt": "The human brain is",
+      "prompt_tokens": 4,
+      "stopped_on_eos": false
+    },
+    {
+      "continuation": ":\n1. Fruits and vegetables\nIn addition to vegetables, whole grains and whole grains contain many vitamins, minerals, vitamins, and minerals.\n3. Fruits and vegetables\nThe nutritional value of vegetables and nuts is not well understood as good protein and are not good. However, the dietary value",
+      "full_text": "A healthy diet includes:\n1. Fruits and vegetables\nIn addition to vegetables, whole grains and whole grains contain many vitamins, minerals, vitamins, and minerals.\n3. Fruits and vegetables\nThe nutritional value of vegetables and nuts is not well understood as good protein and are not good. However, the dietary value",
+      "generated_tokens": 64,
+      "prompt": "A healthy diet includes",
+      "prompt_tokens": 4,
+      "stopped_on_eos": false
+    }
+  ],
+  "gpu": null,
+  "interpretation": "This smoke test verifies checkpoint loading, compatibility, finite inference, and autoregressive generation. It does not establish factual or medical quality.",
+  "maximum_positions": 1024,
+  "precision": "fp32",
+  "seed": 42,
+  "status": "passed",
+  "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e",
+  "torch_version": "2.13.0+cpu",
+  "unique_trainable_parameters": 35463680,
+  "vocabulary_size": 16000
+}
