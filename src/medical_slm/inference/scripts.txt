@@ -1,0 +1,1 @@
+python scripts/evaluation/check_stage_a_model.py --prompt "The human brain is" --prompt "A healthy diet includes" --max-new-tokens 64 --temperature 0.8

@@ -7,6 +7,13 @@
 **Promoted checkpoint:** `checkpoint_00007250`  
 **Final chronological checkpoint:** `checkpoint_00007310`
 
+**Unique trainable parameters:** 35,463,680
+
+**Primary evidence:** Saved checkpoint manifests, trainer state, evaluation JSON, notebook outputs, configuration files, and regression-test results
+
+> [!IMPORTANT]
+> This report records a language-model pretraining experiment. Neither the promoted checkpoint nor this report establishes medical correctness, clinical safety, diagnostic ability, or fitness for patient-facing use.
+
 ## 1. Executive summary
 
 Stage A began with prepared tokenized datasets and a custom tokenizer, but without a language-model architecture or a training system. We designed and implemented a decoder-only causal language model, a deterministic and resumable training pipeline, mixed-precision support, evaluation, structured metrics, and crash-safe checkpoints. We then tested the system locally, exercised it through short development and resume runs, prepared a self-contained Google Colab workflow, and completed one full epoch of Stage A pretraining on a Tesla T4 GPU using FP16.
@@ -21,6 +28,19 @@ The promoted checkpoint achieved:
 | Test | 3.679168 | 39.613418 | 1,185 | 303,360 |
 
 The local promoted checkpoint was subsequently audited. All nine checkpoint artifacts matched their declared sizes and SHA-256 hashes. Its recorded tokenizer hash and Stage A dataset-manifest hash also matched the corresponding local files.
+
+### Report navigation
+
+- Sections 2–3: starting assets and model architecture.
+- Sections 4–8: loss, sampling, optimization, precision, and evaluation design.
+- Sections 9–11: checkpoints, command line, and regression testing.
+- Sections 12–14: Colab workflow, preflight evidence, and full training run.
+- Sections 15–17: selection, promotion, and integrity verification.
+- Sections 18–22: repository state, delivered capabilities, limitations, and next steps.
+
+### Evidence and interpretation convention
+
+Exact values in this report come from machine-readable artifacts when available. Rounded values are labeled “approximately.” Statements about why validation and test differ, likely runtime behavior, or suitability for a later stage are interpretations and should not be treated as measured facts. The saved JSON files remain the authoritative source for final numeric evaluation results.
 
 ## 2. Starting point
 
@@ -61,6 +81,7 @@ We chose a compact decoder-only Transformer appropriate for the available data v
 
 | Setting | Implemented value |
 |---|---:|
+| Unique trainable parameters | 35,463,680 |
 | Vocabulary size | 16,000 |
 | Hidden size | 512 |
 | Decoder layers | 8 |
@@ -78,6 +99,19 @@ We chose a compact decoder-only Transformer appropriate for the available data v
 | Initialization standard deviation | 0.02 |
 
 The maximum context length was deliberately set to 1,024 even though Stage A trains at length 256. This leaves room for later continual pretraining or supervised fine-tuning at longer context lengths without changing the learned architecture.
+
+The exact parameter total is derived from the tied-embedding implementation:
+
+| Component | Parameters |
+|---|---:|
+| Token embedding and tied output head | 8,192,000 |
+| Eight attention modules | 8,388,608 |
+| Eight SwiGLU MLP modules | 18,874,368 |
+| Per-layer RMSNorm scales | 8,192 |
+| Final RMSNorm scale | 512 |
+| **Total unique trainable parameters** | **35,463,680** |
+
+Because the output head shares the token-embedding matrix, it does not add another 8,192,000 unique parameters.
 
 The model was implemented as repository-native PyTorch modules:
 
@@ -250,7 +284,7 @@ python scripts/training/train_stage_a.py `
 
 ## 11. Regression testing history
 
-Testing was performed incrementally as each subsystem was added. The visible suite progressed through 318, 326, 334, and finally 347 passing tests.
+Testing was performed incrementally as each subsystem was added. The visible suite progressed through 318, 326, 334, and 347 passing tests during training-system development. Four targeted generation tests and the other intervening coverage brought the final post-training suite to 356 passing tests.
 
 Important targeted regressions include:
 
@@ -274,13 +308,13 @@ Important targeted regressions include:
 - Tiny training validates, checkpoints, and resumes at the correct batch.
 - One-batch overfit mode reuses the selected batch without advancing the normal data cursor.
 
-The last user-run complete regression result was:
+The complete regression result after adding and exercising the post-training inference gate was:
 
 ```text
-347 passed in 9.61s
+356 passed in 13.66s
 ```
 
-During the final artifact audit, the automated suite could not be rerun from the assistant sandbox because the repository virtual environment referenced a Python installation unavailable to that execution account. This does not invalidate the prior user-run result; it is recorded here as an environment limitation rather than a test failure.
+During the earlier artifact audit, the restricted assistant sandbox could not launch the repository's Python environment. A later explicitly authorized run used the working project virtual environment successfully, so the 356-pass result supersedes that earlier environment limitation.
 
 ## 12. Colab and RunPod portability
 
@@ -377,6 +411,16 @@ The full run was executed on Google Colab Pro with:
 | Epochs | 1 |
 | Planned optimizer updates | 7,310 |
 
+The promoted checkpoint captured this software environment:
+
+| Runtime component | Recorded value |
+|---|---|
+| Operating system | Linux 6.6.122+, x86-64, glibc 2.35 |
+| Python | 3.12.13 |
+| PyTorch | 2.11.0+cu128 |
+| CUDA runtime | 12.8 |
+| cuDNN | 91900 |
+
 The T4 does not provide the preferred native BF16 behavior for this pipeline, so automatic precision correctly resolved to FP16. This was expected and safe because the trainer saved and restored the gradient scaler and tracked non-finite events.
 
 The run produced milestones at updates 1,000 through 7,000, validation/checkpoint points including update 7,250, and the final chronological checkpoint at update 7,310. The observed pace was roughly 1,000 updates every 18–20 minutes on the T4, which was normal for the configured model, effective batch size, validation work, and Drive checkpoint mirroring.
@@ -409,6 +453,8 @@ Two checkpoints were compared on the full validation set:
 | `checkpoint_00007310` | Final chronological state | 3.1987046243962305 | 24.50077192987643 | 466,432 |
 
 Checkpoint 7,250 had the lower validation loss, although the difference was very small. It was selected before looking at the test result. This preserves the test set as a held-out final measurement rather than using it for model selection.
+
+The absolute validation-loss difference was approximately `0.00032186`, and the perplexity difference was approximately `0.007885`. These are small differences, but the predefined lower-validation-loss rule still selects checkpoint 7,250 deterministically.
 
 The selected checkpoint was then evaluated once on the test set:
 
@@ -477,6 +523,62 @@ The promoted checkpoint's own saved trainer state is:
 
 This state is exactly what is expected for the best checkpoint taken shortly before the end of the single training epoch.
 
+### 17.1 Post-training inference gate
+
+Before continual pretraining, a repository-native inference smoke test was added at:
+
+```text
+scripts/evaluation/check_stage_a_model.py
+```
+
+The gate uses the promotion pointer by default and performs the following checks in order:
+
+1. Resolve `checkpoint_00007250` from `reports/stage_a/promoted_stage_a.json`.
+2. Verify every checkpoint artifact against `checkpoint_manifest.json`.
+3. Reconstruct the model from the checkpoint's saved model configuration.
+4. Strictly load `model.pt`, rejecting missing or unexpected state-dictionary keys.
+5. Hash the tokenizer and compare it with the checkpoint compatibility hash.
+6. Confirm that tokenizer and model both use a vocabulary of 16,000 entries.
+7. Confirm that `<bos>` and `<eos>` are present.
+8. Run a forward pass and validate the logits shape.
+9. Reject any NaN or Inf logits or sampling probabilities.
+10. Generate autoregressive continuations from fixed or user-provided prompts.
+11. Save settings, environment, checks, and outputs to a machine-readable JSON report.
+
+The implementation supports greedy decoding and temperature/top-k/top-p sampling. It enforces the 1,024-token context limit and stops early on EOS. Sampling is seeded for repeatability within a compatible environment.
+
+Default local execution is:
+
+```bash
+python scripts/evaluation/check_stage_a_model.py
+```
+
+The default report destination is:
+
+```text
+reports/stage_a/stage_a_generation_smoke_test.json
+```
+
+The inference gate is considered complete only after the script prints `Stage A model smoke test: PASSED`, the generated JSON is retained, and the sample text is manually reviewed for obvious corruption such as empty decoding, broken token boundaries, or pathological immediate failures. Repetition, weak factuality, or failure to follow instructions may still occur because Stage A is a base causal model rather than an instruction-tuned assistant.
+
+Passing this gate establishes that the promoted files can be loaded and used for finite autoregressive inference. It does not establish medical knowledge, factual accuracy, or clinical safety. Those require separate evaluations in later stages.
+
+The permanent gate was run on the promoted checkpoint using CPU/FP32, seed 42, temperature 0.8, top-k 50, top-p 0.95, and a maximum of 32 new tokens. It passed with:
+
+| Verification | Observed result |
+|---|---|
+| Checkpoint | `checkpoint_00007250` |
+| Manifest verification | Passed |
+| Tokenizer compatibility | Passed |
+| Loaded unique parameters | 35,463,680 |
+| Vocabulary size | 16,000 |
+| Forward logits | Correct shape and finite |
+| Autoregressive generation | Passed for four prompts |
+| EOS stopping | Observed on one sampled continuation |
+| Regression suite after addition | 356 passed |
+
+The complete machine-readable output is stored in `reports/stage_a/stage_a_generation_smoke_test.json`. Qualitative review found sentence-like, decodable text and sensible local continuations. It also found repetition and medically unreliable or awkward claims. This is not a checkpoint-loading failure; it is evidence that the Stage A base model is operational but not yet medically specialized, instruction-tuned, or safety-qualified.
+
 ## 18. Repository state at completion
 
 At the time of the final audit:
@@ -507,7 +609,23 @@ Stage A delivered more than a set of model weights. It established a reusable tr
 - End-to-end Colab development, resume, full-run, evaluation, and promotion procedures.
 - A promoted baseline suitable for the next curriculum stage.
 
-## 20. Recommended next steps
+## 20. Limitations and non-claims
+
+The completed run has several important boundaries:
+
+- **Perplexity is not medical competence.** Stage A measured next-token prediction, not medical factuality, reasoning, calibration, diagnosis, or treatment quality.
+- **No clinical safety evaluation was performed.** The checkpoint must not be treated as suitable for patient-facing or professional decision-making use.
+- **Only one pretraining epoch was run.** This was the planned Stage A budget, not a claim that one epoch is globally optimal.
+- **Only two end-of-run candidates were compared in the final notebook evaluation.** Checkpoint 7,250 won under the recorded lower-validation-loss rule; the tiny margin should not be overinterpreted as a broad quality difference.
+- **The test set was used once for the promoted checkpoint.** Future tuning must not optimize against this result; a new untouched test set may be needed if repeated decisions begin to depend on it.
+- **The validation/test gap is unexplained.** Dataset composition or difficulty is a plausible explanation, but source-level analysis is required before drawing conclusions.
+- **Cross-platform bitwise identity is not guaranteed.** RNG capture and batch cursors support exact continuation in a compatible environment, while different GPU kernels, PyTorch versions, or precision modes may produce small numerical differences.
+- **Large binaries are outside Git.** Reproducibility depends on retaining the checkpoint directories and data artifacts in durable storage together with their manifests.
+- **Qualitative generation remains weak.** The smoke test produced fluent fragments but also repetition and unreliable medical phrasing. Later training and evaluation must address this rather than treating basic fluency as correctness.
+
+These limitations do not invalidate Stage A completion. They define what evidence must be added during continual medical pretraining, supervised fine-tuning, and downstream evaluation.
+
+## 21. Recommended next steps
 
 The immediate next phase should use `checkpoint_00007250` as its initialization point. Before beginning, the next-stage plan should define:
 
@@ -530,6 +648,8 @@ Before committing the current work, the recommended repository housekeeping is:
 5. Confirm both checkpoint_00007250 and checkpoint_00007310 remain backed up remotely.
 ```
 
-## 21. Final conclusion
+Before starting the next run, define explicit acceptance gates. At minimum, require dataset/tokenizer compatibility, a finite random or resumed baseline, a short overfit smoke test, a successful checkpoint-resume test, decreasing medical-validation loss, bounded general-domain regression, zero unexplained non-finite updates, and integrity verification of the promoted artifacts.
 
-Stage A was completed successfully. The model trained over the complete Stage A dataset for one epoch, the loss decreased from the expected random baseline to a validation loss of approximately 3.20, resume behavior was demonstrated, no numerical failures were recorded, and the final artifacts passed integrity and compatibility checks. Checkpoint 7,250 was correctly promoted because it had a slightly better full-validation loss than the end-of-epoch checkpoint. The project is now ready to plan and implement continual medical-domain pretraining from the promoted Stage A checkpoint.
+## 22. Final conclusion
+
+Stage A was completed successfully. The model trained over the complete Stage A dataset for one epoch, the loss decreased from the expected random baseline to a validation loss of approximately 3.20, resume behavior was demonstrated, no numerical failures were recorded, and the final artifacts passed integrity and compatibility checks. Checkpoint 7,250 was correctly promoted because it had a slightly better full-validation loss than the end-of-epoch checkpoint. The promoted model subsequently passed strict loading, finite-forward, tokenizer-compatibility, autoregressive-generation, and full-regression gates. Its sample text confirms that the base model works while also demonstrating that medical quality and safety are not yet sufficient. The project is ready to plan continual medical-domain pretraining from the promoted Stage A checkpoint.
