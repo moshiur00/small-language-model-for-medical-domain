@@ -7,7 +7,7 @@ parent_checkpoint_directory: /content/stage_a_parent/checkpoint_00007250
 checkpoint_backup_directory: /content/drive/MyDrive/medical-slm-runs/stage_b/checkpoints
 seed: 42
 device: auto
-precision: auto
+precision: fp16
 micro_batch_size: 16
 gradient_accumulation_steps: 8
 evaluation_batch_size: 32
