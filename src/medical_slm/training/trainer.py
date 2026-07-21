@@ -19,13 +19,15 @@ from medical_slm.data.tokenization.manifest import calculate_sha256
 from medical_slm.model import DecoderConfig, DecoderModel
 from medical_slm.training.checkpoint import (
     load_checkpoint,
+    load_model_weights,
     mirror_checkpoint,
     prune_checkpoints,
     resolve_checkpoint_pointer,
     save_checkpoint,
+    verify_checkpoint,
     write_checkpoint_pointer,
 )
-from medical_slm.training.config import StageATrainingConfig
+from medical_slm.training.config import StageATrainingConfig, StageBTrainingConfig
 from medical_slm.training.evaluation import EvaluationResult, evaluate_shifted_packed
 from medical_slm.training.metrics import JsonlMetricLogger
 from medical_slm.training.optimizer import create_adamw
@@ -102,6 +104,28 @@ def validate_data_contracts(
     }
 
 
+def validate_validation_contract(
+    split_directory: str | Path,
+    *,
+    model: DecoderConfig,
+    tokenizer_hash: str,
+) -> str:
+    """Validate one additional packed validation split and return its hash."""
+    directory = Path(split_directory)
+    metadata = _load_metadata(directory)
+    manifest_path = directory.parent / "dataset_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest["packing"].get("label_strategy") != "next_token_shift_in_dataset":
+        raise ValueError(f"{manifest_path} does not use shifted packed labels.")
+    if int(metadata["packing"]["sequence_length"]) > model.max_position_embeddings:
+        raise ValueError("Additional validation sequence length exceeds model context.")
+    if int(metadata["tokenizer"]["vocabulary_size"]) != model.vocab_size:
+        raise ValueError("Additional validation vocabulary does not match the model.")
+    if manifest["tokenizer"]["tokenizer_json_sha256"] != tokenizer_hash:
+        raise ValueError(f"Tokenizer hash does not match {manifest_path}.")
+    return calculate_sha256(manifest_path)
+
+
 class StageATrainer:
     """Coordinate deterministic training, evaluation, metrics and checkpoints."""
 
@@ -136,6 +160,8 @@ class StageATrainer:
         )
         self.scaler = create_grad_scaler(self.precision)
         self.state = TrainingState()
+        self.checkpoint_lineage: dict[str, Any] | None = None
+        self.final_pointer_name = "final_stage_a"
         self.output_directory = Path(training_config.output_directory)
         self.checkpoint_root = self.output_directory / "checkpoints"
         self.checkpoint_backup_root = (
@@ -314,6 +340,7 @@ class StageATrainer:
                 training_config=self.training_config.to_dict(),
                 dataset_manifest_sha256=self.hashes["train_manifest"],
                 tokenizer_sha256=self.hashes["tokenizer"],
+                lineage=self.checkpoint_lineage,
             )
         write_checkpoint_pointer(self.checkpoint_root, "latest", name)
         if is_best:
@@ -431,15 +458,187 @@ class StageATrainer:
             ):
                 write_checkpoint_pointer(
                     self.checkpoint_root,
-                    "final_stage_a",
+                    self.final_pointer_name,
                     final_checkpoint.name,
                 )
                 if self.checkpoint_backup_root is not None:
                     write_checkpoint_pointer(
                         self.checkpoint_backup_root,
-                        "final_stage_a",
+                        self.final_pointer_name,
                         final_checkpoint.name,
                     )
             return self.state
         finally:
             self.metric_logger.close()
+
+
+class StageBTrainer(StageATrainer):
+    """Continual medical pretraining with dual validation and parent lineage."""
+
+    def __init__(
+        self,
+        training_config: StageBTrainingConfig,
+        model_config: DecoderConfig,
+    ) -> None:
+        super().__init__(training_config, model_config)
+        self.training_config = training_config
+        self.general_validation_dataset = PackedTokenDataset(
+            training_config.general_validation_directory
+        )
+        self.hashes["general_validation_manifest"] = validate_validation_contract(
+            training_config.general_validation_directory,
+            model=model_config,
+            tokenizer_hash=self.hashes["tokenizer"],
+        )
+        parent = load_model_weights(
+            checkpoint_directory=training_config.parent_checkpoint_directory,
+            model=self.model,
+            expected_model_config=model_config.to_dict(),
+            expected_tokenizer_sha256=self.hashes["tokenizer"],
+            map_location=self.device,
+        )
+        self.checkpoint_lineage = {
+            "stage": "continual_medical_stage_b",
+            "parent": parent,
+            "data": {
+                "train_manifest_sha256": self.hashes["train_manifest"],
+                "medical_validation_manifest_sha256": self.hashes[
+                    "validation_manifest"
+                ],
+                "general_validation_manifest_sha256": self.hashes[
+                    "general_validation_manifest"
+                ],
+            },
+        }
+        self.final_pointer_name = "final_stage_b"
+        self._last_is_best_eligible = False
+        self.last_general_evaluation: EvaluationResult | None = None
+
+    def _general_validation_loader(self) -> DataLoader[dict[str, torch.Tensor]]:
+        return DataLoader(
+            self.general_validation_dataset,
+            batch_size=self.training_config.evaluation_batch_size,
+            shuffle=False,
+            num_workers=self.training_config.dataloader_workers,
+            pin_memory=(
+                self.training_config.pin_memory and self.device.type == "cuda"
+            ),
+        )
+
+    def resume(self, checkpoint: str | Path = "latest") -> None:
+        """Resume only a Stage B checkpoint with matching parent lineage."""
+        checkpoint_path = Path(checkpoint)
+        if str(checkpoint) == "latest":
+            checkpoint_path = resolve_checkpoint_pointer(self.checkpoint_root)
+        manifest = verify_checkpoint(checkpoint_path)
+        if manifest.get("lineage") != self.checkpoint_lineage:
+            raise ValueError("Stage B checkpoint lineage does not match this run.")
+        super().resume(checkpoint_path)
+
+    def evaluate(self) -> EvaluationResult:
+        """Evaluate medical adaptation and general-language retention."""
+        medical = evaluate_shifted_packed(
+            model=self.model,
+            batches=self._validation_loader(),
+            device=self.device,
+            precision=self.precision,
+        )
+        general = evaluate_shifted_packed(
+            model=self.model,
+            batches=self._general_validation_loader(),
+            device=self.device,
+            precision=self.precision,
+        )
+        self.last_general_evaluation = general
+
+        if self.state.medical_validation_baseline_loss is None:
+            self.state.medical_validation_baseline_loss = medical.loss
+        if self.state.general_validation_baseline_loss is None:
+            self.state.general_validation_baseline_loss = general.loss
+
+        is_best_medical = (
+            self.state.best_medical_validation_loss is None
+            or medical.loss < self.state.best_medical_validation_loss
+        )
+        if is_best_medical:
+            self.state.best_medical_validation_loss = medical.loss
+            self.state.best_validation_loss = medical.loss
+        self.state.latest_general_validation_loss = general.loss
+
+        general_limit = self.state.general_validation_baseline_loss * (
+            1.0 + self.training_config.general_loss_max_degradation_fraction
+        )
+        improves_medical_baseline = (
+            medical.loss < self.state.medical_validation_baseline_loss
+        )
+        is_eligible = improves_medical_baseline and general.loss <= general_limit
+        self._last_is_best_eligible = is_eligible and (
+            self.state.best_eligible_medical_loss is None
+            or medical.loss < self.state.best_eligible_medical_loss
+        )
+        if self._last_is_best_eligible:
+            self.state.best_eligible_medical_loss = medical.loss
+
+        common = {
+            "medical_baseline_loss": self.state.medical_validation_baseline_loss,
+            "general_baseline_loss": self.state.general_validation_baseline_loss,
+            "general_loss_limit": general_limit,
+            "promotion_eligible": is_eligible,
+        }
+        self.metric_logger.log(
+            "medical_validation",
+            update=self.state.update,
+            metrics={
+                "loss": medical.loss,
+                "perplexity": medical.perplexity,
+                "tokens": medical.tokens,
+                "samples": medical.samples,
+                "duration_seconds": medical.duration_seconds,
+                "is_best_medical": is_best_medical,
+                "is_best_eligible": self._last_is_best_eligible,
+                **common,
+            },
+        )
+        self.metric_logger.log(
+            "general_retention_validation",
+            update=self.state.update,
+            metrics={
+                "loss": general.loss,
+                "perplexity": general.perplexity,
+                "tokens": general.tokens,
+                "samples": general.samples,
+                "duration_seconds": general.duration_seconds,
+                "relative_loss_change": (
+                    general.loss / self.state.general_validation_baseline_loss - 1.0
+                ),
+                **common,
+            },
+        )
+        return medical
+
+    def _write_stage_b_pointer(self, name: str, checkpoint_name: str) -> None:
+        write_checkpoint_pointer(self.checkpoint_root, name, checkpoint_name)
+        if self.checkpoint_backup_root is not None:
+            write_checkpoint_pointer(
+                self.checkpoint_backup_root,
+                name,
+                checkpoint_name,
+            )
+
+    def _save(self, *, is_best: bool = False) -> Path:
+        destination = super()._save(is_best=is_best)
+        if is_best:
+            self._write_stage_b_pointer("best_medical", destination.name)
+        if self._last_is_best_eligible:
+            self._write_stage_b_pointer("best_eligible", destination.name)
+        self._last_is_best_eligible = False
+        return destination
+
+    def train(self) -> TrainingState:
+        """Establish Stage A baselines, then run continual pretraining."""
+        if (
+            self.state.update == 0
+            and self.state.medical_validation_baseline_loss is None
+        ):
+            self.evaluate()
+        return super().train()
