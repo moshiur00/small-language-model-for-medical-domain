@@ -66,12 +66,20 @@ The report also records the GPU precision, parent and dataset lineage hashes, th
 
 No medical test data is evaluated at this gate. It remains sealed until a Stage B checkpoint has been selected using validation results alone.
 
-## What follows
+## Development and full-training cells
 
-After this gate passes, run these in order on the same platform profile:
+The same notebook now includes the remaining training workflow. Run the sections in this order:
 
-1. Ten-update one-batch overfitting diagnostic.
-2. Fifty-update development run.
-3. Resume from update 50 and continue to update 100.
+1. Isolated ten-update one-batch alignment diagnostic.
+2. Fifty-update development run in `stage_b_dev`.
+3. Restore from Drive and continue from update 50 to update 100.
 4. Compare medical improvement and general retention.
-5. Start the full 6,840-update, one-epoch Stage B run only if all checks pass.
+5. Start the standalone full 6,840-update, one-epoch Stage B run.
+6. If Colab disconnects, use the standalone full-resume cell; do not start fresh again.
+7. Run the full-completion verification after `final_stage_b.json` appears.
+
+Development checkpoints are stored in `MyDrive/medical-slm-runs/stage_b_dev/checkpoints`. Full-run checkpoints are stored separately in `MyDrive/medical-slm-runs/stage_b/checkpoints`, preventing a development checkpoint from being mistaken for a full-run resume point.
+
+The Colab profile uses explicit FP16 rather than `auto`. This preserves the presence and semantics of the gradient-scaler state if Colab assigns a T4 in one session and an A100 in a later resume session. Both GPUs support this policy.
+
+The fresh-full-run cell refuses to run if `latest.json` already exists locally or in the full Drive checkpoint directory. The resume cell verifies the checkpoint manifest and saved FP16 configuration before restoring optimizer, scheduler, scaler, RNG, counters, and the next batch cursor.

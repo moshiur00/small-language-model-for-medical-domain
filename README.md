@@ -438,4 +438,4 @@ Platform profiles are available at:
 
 See [Stage B Training System Report](reports/stage_b/TRAINING_SYSTEM_REPORT.md) for initialization, lineage, dual-validation, promotion, and test details.
 
-For the next Colab gate, use [notebooks/colab_stage_b.ipynb](notebooks/colab_stage_b.ipynb) and follow the [Stage B Colab Baseline Guide](reports/stage_b/COLAB_BASELINE_GUIDE.md). The upload-ready `stage-b-data.tar` archive is generated locally and excluded from Git.
+For the complete Colab workflow, use [notebooks/colab_stage_b.ipynb](notebooks/colab_stage_b.ipynb) and follow the [Stage B Colab Baseline Guide](reports/stage_b/COLAB_BASELINE_GUIDE.md). The notebook includes the zero-update baseline, development run, 50-to-100 resume test, standalone fresh full run, standalone interrupted-run resume, and final-state verification. Development and full checkpoints use separate Drive directories. The upload-ready `stage-b-data.tar` archive is generated locally and excluded from Git.
