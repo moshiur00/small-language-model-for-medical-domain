@@ -1,8 +1,8 @@
 # Stage B Training System Report
 
 **Date:** 2026-07-21  
-**Status:** Implemented, regression-tested, and verified against the real Stage A checkpoint  
-**Training status:** Full Stage B training has not started
+**Status:** Implemented, regression-tested, trained for one complete epoch, and preserved as the v1 comparison run
+**Training status:** Complete; the endpoint exhibits catastrophic general-domain forgetting
 
 ## Objective
 
@@ -150,4 +150,6 @@ Current complete result:
 
 ## Next gate
 
-The next action should run [the Stage B Colab baseline notebook](../../notebooks/colab_stage_b.ipynb) on the same GPU/precision policy intended for development training. It performs initialization verification and `--baseline-only`, then preserves a machine-readable zero-update report in Drive. See the [Colab Baseline Guide](COLAB_BASELINE_GUIDE.md) for the exact upload artifact, checksum, Drive paths, and pass criteria. After recording finite medical and general baselines, run the one-batch diagnostic, followed by a 50-update development run and a 50-to-100 restart/resume test. Full 6,840-update training should begin only after all of those gates pass.
+Stage B v1 completed all 6,840 updates over 224,120,320 targets with zero skipped or non-finite updates. The original retention-selected checkpoint was `checkpoint_00000250`; the full endpoint achieved substantially lower medical loss but severe general-domain forgetting. The medical test remains sealed.
+
+Preserve the full v1 experiment before starting another adaptation run. See the [v1 Experiment Report](v1/EXPERIMENT_REPORT.md) and [Preservation and Comparison Workflow](v1/PRESERVATION_AND_COMPARISON.md). Stage B v2 and LoRA will restart independently from the Stage A parent and will be compared under the shared registry at [continual_adaptation_registry.json](../comparisons/continual_adaptation_registry.json).

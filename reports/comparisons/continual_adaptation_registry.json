@@ -1,0 +1,65 @@
+{
+  "evaluation_contract": {
+    "general_validation_manifest_sha256": "440cde59138604720d0afbceb14777515c8591b2ff71000dc158f427994f8ffd",
+    "medical_test_status": "sealed",
+    "medical_validation_manifest_sha256": "6537ac466894df9175009017198e7c9996e55705a9a9388130716f4e261a706d",
+    "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+  },
+  "experiments": [
+    {
+      "artifact_path": "artifacts/training/stage_a/checkpoints/checkpoint_00007250",
+      "checkpoint": "checkpoint_00007250",
+      "general_validation_loss": 3.19838276440017,
+      "id": "stage_a_parent",
+      "medical_validation_loss": 3.4675045480274385,
+      "method": "general_pretraining",
+      "parent": null,
+      "status": "complete"
+    },
+    {
+      "artifact_path": "artifacts/training/stage_b_v1/checkpoints/checkpoint_00000250",
+      "checkpoint": "checkpoint_00000250",
+      "general_validation_loss": 3.3300274743562572,
+      "id": "stage_b_v1_best_eligible",
+      "medical_validation_loss": 3.374684920068472,
+      "method": "full_continual_pretraining",
+      "parent": "stage_a_parent",
+      "status": "preservation_pending_local_import",
+      "training_tokens": 8192000
+    },
+    {
+      "artifact_path": "artifacts/training/stage_b_v1/checkpoints",
+      "checkpoint": "final_stage_b pointer",
+      "general_validation_loss": 3.7491228888529475,
+      "id": "stage_b_v1_full_endpoint",
+      "medical_validation_loss": 3.0091672630716295,
+      "method": "full_continual_pretraining",
+      "parent": "stage_a_parent",
+      "promotion_eligible": false,
+      "status": "preservation_pending_local_import",
+      "training_tokens": 224120320
+    },
+    {
+      "artifact_path": "artifacts/training/stage_b_v2",
+      "checkpoint": null,
+      "id": "stage_b_v2",
+      "method": "retention_aware_full_continual_pretraining",
+      "parent": "stage_a_parent",
+      "status": "planned"
+    },
+    {
+      "artifact_path": "artifacts/training/stage_b_lora",
+      "checkpoint": null,
+      "id": "stage_b_lora",
+      "method": "lora_continual_adaptation",
+      "parent": "stage_a_parent",
+      "status": "planned"
+    }
+  ],
+  "format_version": 1,
+  "selection_policy": {
+    "medical_test_may_not_select_checkpoint": true,
+    "primary_metric": "medical_validation_loss",
+    "retention_metric": "general_validation_perplexity_ratio"
+  }
+}
