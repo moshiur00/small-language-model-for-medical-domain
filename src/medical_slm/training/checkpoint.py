@@ -169,6 +169,7 @@ def save_checkpoint(
     dataset_manifest_sha256: str,
     tokenizer_sha256: str,
     recent_metrics: Sequence[Mapping[str, Any]] = (),
+    lineage: Mapping[str, Any] | None = None,
 ) -> Path:
     """Write an immutable checkpoint directory and publish it atomically."""
     if not checkpoint_name or Path(checkpoint_name).name != checkpoint_name:
@@ -220,6 +221,8 @@ def save_checkpoint(
             },
             "artifacts": [_artifact(path) for path in artifact_paths],
         }
+        if lineage is not None:
+            manifest["lineage"] = dict(lineage)
         _write_json(temporary / "checkpoint_manifest.json", manifest)
         _flush_file(temporary / "checkpoint_manifest.json")
         _flush_directory(temporary)
@@ -231,6 +234,54 @@ def save_checkpoint(
             shutil.rmtree(temporary)
         raise
     return destination
+
+
+def load_model_weights(
+    *,
+    checkpoint_directory: str | Path,
+    model: nn.Module,
+    expected_model_config: Mapping[str, Any],
+    expected_tokenizer_sha256: str,
+    map_location: torch.device | str = "cpu",
+) -> dict[str, Any]:
+    """Verify a parent checkpoint and load only its model weights."""
+    directory = Path(checkpoint_directory)
+    manifest = _verify_manifest(directory)
+    compatibility = manifest.get("compatibility", {})
+    if compatibility.get("tokenizer_sha256") != expected_tokenizer_sha256:
+        raise CheckpointError("Parent checkpoint tokenizer compatibility mismatch.")
+
+    try:
+        saved_config = json.loads(
+            (directory / "config.json").read_text(encoding="utf-8")
+        )["model"]
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as error:
+        raise CheckpointError("Parent checkpoint model configuration is invalid.") from error
+    if saved_config != dict(expected_model_config):
+        raise CheckpointError("Parent checkpoint model configuration mismatch.")
+
+    model.load_state_dict(
+        torch.load(directory / "model.pt", map_location=map_location, weights_only=True),
+        strict=True,
+    )
+    model_artifact = next(
+        (
+            artifact
+            for artifact in manifest["artifacts"]
+            if artifact.get("path") == "model.pt"
+        ),
+        None,
+    )
+    if model_artifact is None:
+        raise CheckpointError("Parent checkpoint manifest does not contain model.pt.")
+    return {
+        "checkpoint_name": manifest["checkpoint_name"],
+        "checkpoint_manifest_sha256": calculate_sha256(
+            directory / "checkpoint_manifest.json"
+        ),
+        "model_sha256": model_artifact["sha256"],
+        "tokenizer_sha256": expected_tokenizer_sha256,
+    }
 
 
 def mirror_checkpoint(

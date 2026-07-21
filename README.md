@@ -17,7 +17,7 @@ A from-scratch decoder-only language model and training pipeline intended for a 
 - [Google Colab](#google-colab)
 - [Checkpoints and preservation](#checkpoints-and-preservation)
 - [Reproducibility snapshot](#reproducibility-snapshot)
-- [Next phase](#next-phase)
+- [Stage B continual pretraining](#stage-b-continual-pretraining)
 
 ## Current status
 
@@ -38,7 +38,7 @@ A from-scratch decoder-only language model and training pipeline intended for a 
 | Held-out test loss | 3.679168 |
 | Held-out test perplexity | 39.613418 |
 | Post-training inference gate | Passed |
-| Current regression suite | 356 passed |
+| Current regression suite | 365 passed |
 
 Checkpoint 7,250 was promoted because its full-validation loss was marginally lower than the final update-7,310 checkpoint. The test set was evaluated only after checkpoint selection.
 
@@ -131,7 +131,8 @@ The training system includes:
 
 ```text
 configs/                       Model and platform training configurations
-notebooks/colab_stage_a.ipynb  Colab development, full-run, resume, and evaluation workflow
+notebooks/colab_stage_a.ipynb  Stage A Colab training, resume, and evaluation workflow
+notebooks/colab_stage_b.ipynb  Stage B zero-update Colab baseline gate
 reports/stage_a/               Permanent Stage A reports and promotion metadata
 scripts/training/              Stage A command-line entry point
 src/medical_slm/model/         Decoder architecture
@@ -185,7 +186,7 @@ python -m pytest -q
 The current complete regression result, including the post-training generation tests, is:
 
 ```text
-356 passed in 13.66s
+365 passed in 9.97s
 ```
 
 The suite includes targeted tests for double-shifting, SFT masking, deterministic sampler resume, scheduler boundaries, batch-size-invariant evaluation, checkpoint corruption, compatibility checks, RNG restoration, exact resumed trajectories, Drive mirroring, and tiny end-to-end training.
@@ -365,16 +366,76 @@ The project trains a custom GPT-2-style ByteLevel BPE tokenizer and provides uti
 
 Tokenizer tooling is located under `scripts/tokenizer/` and `src/medical_slm/tokenizer/`.
 
-## Next phase
+## Stage B continual pretraining
 
-The next curriculum step is continual medical-domain pretraining initialized from `checkpoint_00007250`. Its implementation plan should define:
-
-1. The medical corpus, licensing policy, and immutable dataset manifest.
-2. Medical-domain validation and test splits that remain separate from training.
-3. Whether to keep length 256 or increase toward the model's 1,024-position capacity.
-4. The learning-rate reset, token budget, and checkpoint cadence.
-5. General-domain evaluation to measure catastrophic forgetting.
-6. Medical factuality, safety, and downstream-task evaluations beyond perplexity.
-7. A validation-first promotion rule with test evaluation only after selection.
+Stage B is prepared but training has not started. It will initialize from promoted Stage A checkpoint `checkpoint_00007250`, establish untouched medical and general validation baselines, and then continually pretrain for one epoch over the disjoint medical/rehearsal corpus. The immediate next gate is the zero-update dual-validation baseline on Colab.
 
 The promoted Stage A checkpoint is a pretraining baseline, not a deployable medical assistant.
+
+### Stage B data readiness
+
+The Stage B data foundation is now prepared and verified:
+
+- 224,120,320 effective training targets across 875,470 packed sequences.
+- 82.22% medical data and 17.78% general rehearsal data.
+- Zero document overlap with Stage A.
+- Separate medical validation and sealed medical test splits.
+- Zero overlap among either training stage, medical validation, and medical test.
+- All 109 new binary shards passed SHA-256 verification.
+
+See [Stage B Data Preparation Report](reports/stage_b/DATA_PREPARATION_REPORT.md) for exact source allocations, hashes, provenance, and audit results.
+
+### Stage B training system
+
+The continual-pretraining trainer is implemented and has passed its real parent-initialization gate. It:
+
+- Verifies the complete promoted Stage A checkpoint.
+- Loads only model weights from `checkpoint_00007250`.
+- Starts a fresh optimizer, scheduler, precision scaler, RNG progression, and training state.
+- Records parent model/checkpoint hashes in every Stage B checkpoint.
+- Establishes medical-adaptation and general-retention baselines before training.
+- Selects the best medical checkpoint subject to a 5% general-loss degradation ceiling.
+- Writes `best_medical`, `best_eligible`, `latest`, milestone, and `final_stage_b` pointers.
+- Supports exact Stage B interruption and resume.
+
+Verify model-only initialization without evaluation or training:
+
+```bash
+python scripts/training/train_stage_b.py --verify-initialization-only
+```
+
+Evaluate the untouched Stage A model on medical and general validation:
+
+```bash
+python scripts/training/train_stage_b.py --baseline-only
+```
+
+Run a short alignment diagnostic:
+
+```bash
+python scripts/training/train_stage_b.py \
+  --overfit-one-batch \
+  --max-updates 10
+```
+
+Run a bounded development training:
+
+```bash
+python scripts/training/train_stage_b.py --max-updates 50
+```
+
+Resume a Stage B development or full run:
+
+```bash
+python scripts/training/train_stage_b.py --resume latest
+```
+
+Platform profiles are available at:
+
+- `configs/training_stage_b.yaml`
+- `configs/training_stage_b_colab.yaml`
+- `configs/training_stage_b_runpod.yaml`
+
+See [Stage B Training System Report](reports/stage_b/TRAINING_SYSTEM_REPORT.md) for initialization, lineage, dual-validation, promotion, and test details.
+
+For the next Colab gate, use [notebooks/colab_stage_b.ipynb](notebooks/colab_stage_b.ipynb) and follow the [Stage B Colab Baseline Guide](reports/stage_b/COLAB_BASELINE_GUIDE.md). The upload-ready `stage-b-data.tar` archive is generated locally and excluded from Git.

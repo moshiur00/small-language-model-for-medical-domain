@@ -3,6 +3,7 @@
 from medical_slm.training.checkpoint import (
     CheckpointError,
     load_checkpoint,
+    load_model_weights,
     save_checkpoint,
 )
 from medical_slm.training.loss import (
@@ -25,6 +26,7 @@ __all__ = [
     "masked_sft_causal_loss",
     "evaluate_shifted_packed",
     "load_checkpoint",
+    "load_model_weights",
     "run_optimizer_update",
     "save_checkpoint",
     "shifted_packed_causal_loss",
