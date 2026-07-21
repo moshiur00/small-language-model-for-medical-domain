@@ -378,3 +378,16 @@ The next curriculum step is continual medical-domain pretraining initialized fro
 7. A validation-first promotion rule with test evaluation only after selection.
 
 The promoted Stage A checkpoint is a pretraining baseline, not a deployable medical assistant.
+
+### Stage B data readiness
+
+The Stage B data foundation is now prepared and verified:
+
+- 224,120,320 effective training targets across 875,470 packed sequences.
+- 82.22% medical data and 17.78% general rehearsal data.
+- Zero document overlap with Stage A.
+- Separate medical validation and sealed medical test splits.
+- Zero overlap among either training stage, medical validation, and medical test.
+- All 109 new binary shards passed SHA-256 verification.
+
+See [Stage B Data Preparation Report](reports/stage_b/DATA_PREPARATION_REPORT.md) for exact source allocations, hashes, provenance, and audit results.
