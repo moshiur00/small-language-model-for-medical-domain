@@ -1,12 +1,13 @@
-# Medical Small Language Model
+# Small Language Model - Medical Domain
 
-**A 35.5M-parameter decoder-only Transformer built and trained from scratch, then
-adapted to medical text with retention-aware continual pretraining.**
+**A 35.5M-parameter decoder-only Transformer built and trained from scratch,
+adapted to medical text with retention-aware continual pretraining, and evaluated
+through response-masked supervised instruction tuning.**
 
-`Python 3.11+` · `PyTorch` · `Custom 16K BPE tokenizer` · `400+ regression tests` ·
+`Python 3.11+` · `PyTorch` · `Custom 16K BPE tokenizer` · `430+ regression tests` ·
 `Deterministic resume` · `Colab/RunPod workflows`
 
-This portfolio project implements the complete path from raw text to a promoted
+This project implements the complete path from raw text to a promoted
 language-model checkpoint: source standardization, licensing and quality controls,
 deduplication, tokenizer training, packed binary datasets, native Transformer
 architecture, mixed-precision training, exact crash resume, controlled continual-
@@ -21,31 +22,46 @@ autoregressive inference.
 
 ## Project status
 
-| Stage | Status | Outcome |
-|---|---|---|
-| Data and tokenizer | Complete | Licensed, filtered corpora; custom 16,000-token ByteLevel BPE |
-| Stage A general pretraining | Complete | One epoch from random initialization; checkpoint `00007250` promoted |
-| Stage B v1 continual pretraining | Complete, comparison only | Exposed catastrophic forgetting under an overly strict retention rule |
-| Stage B v2 retention-aware pretraining | **Complete and promoted** | Checkpoint `00008000` improved medical validation while remaining inside the declared retention band |
-| Stage B v2 inference gate | **Passed** | Checkpoint identity, lineage, tokenizer compatibility, finite logits, and generation verified |
-| LoRA comparison | Planned | Must use the same Stage A parent and validation-only selection contract |
-| Stage C supervised fine-tuning | **Complete; dual profiles evaluated** | Specialist checkpoint `00000588` improved all seven sealed-test sources; balanced checkpoint `00000125` retained as comparator |
+| Stage                                  | Status                      | Outcome                                                                                                                                                                            |
+| -------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Data and tokenizer                     | Complete                    | Licensed, filtered corpora; custom 16,000-token ByteLevel BPE                                                                                                                      |
+| Stage A general pretraining            | Complete                    | One epoch from random initialization; checkpoint `00007250` promoted                                                                                                               |
+| Stage B v1 continual pretraining       | Complete, comparison only   | Exposed catastrophic forgetting under an overly strict retention rule                                                                                                              |
+| Stage B v2 retention-aware pretraining | **Complete and promoted**   | Checkpoint `00008000` improved medical validation while remaining inside the declared retention band                                                                               |
+| Stage B v2 inference gate              | **Passed (operational)**    | Checkpoint identity, lineage, tokenizer compatibility, finite logits, and decoding verified; this is not a factuality result                                                       |
+| LoRA comparison                        | Planned                     | Must use the same Stage A parent and validation-only selection contract                                                                                                            |
+| Stage C supervised fine-tuning         | **Complete; research-only** | Specialist checkpoint `00000588` improved token metrics on all seven test sources, but failed qualitative generation review; balanced checkpoint `00000125` retained as comparator |
+| Stage D distillation/alignment         | Planned                     | Verified teacher-response distillation first, then conservative preference optimization on new validation and test contracts                                                       |
 
 The current instruction model is Stage C's **medical-instruction specialist
 `checkpoint_00000588`**, with balanced-retention `checkpoint_00000125` retained as
 an explicit comparator. Both descend from promoted Stage B v2 `checkpoint_00008000`.
 Large binary artifacts are preserved outside Git with cryptographic manifests.
 
-## Results at a glance
+## Results and evaluation
+
+This project reports three different kinds of evidence and does not treat them as
+interchangeable:
+
+1. **Language-model evaluation** measures next-token loss and perplexity on packed
+   general and medical text.
+2. **Instruction evaluation** measures response-only loss, perplexity, and token
+   accuracy on held-out instruction/response examples.
+3. **Qualitative generation review** asks whether decoded answers are coherent,
+   relevant, non-repetitive, and medically defensible.
+
+The first two improved during training. The third exposed a significant limitation:
+better teacher-forced token prediction did **not** produce reliable free-form medical
+answers at this model scale.
 
 ### Validation-controlled experiment comparison
 
-| Experiment | Training tokens | Medical validation loss | General validation loss | Selection outcome |
-|---|---:|---:|---:|---|
-| Stage A parent | 239,524,352 | 3.467505 | **3.198383** | General-pretraining baseline |
-| Stage B v1 best eligible, update 250 | 8,192,000 | 3.374685 | 3.330027 | Promoted under v1's 5% loss ceiling |
-| Stage B v1 full endpoint, update 6,840 | 224,120,320 | **3.009167** | 3.749123 | Rejected: severe general-domain forgetting |
-| **Stage B v2, update 8,000** | **262,144,000** | **3.135652** | **3.348985** | **Promoted inside the preferred retention band** |
+| Experiment                             | Training tokens | Medical validation loss | General validation loss | Selection outcome                                |
+| -------------------------------------- | --------------: | ----------------------: | ----------------------: | ------------------------------------------------ |
+| Stage A parent                         |     239,524,352 |                3.467505 |            **3.198383** | General-pretraining baseline                     |
+| Stage B v1 best eligible, update 250   |       8,192,000 |                3.374685 |                3.330027 | Promoted under v1's 5% loss ceiling              |
+| Stage B v1 full endpoint, update 6,840 |     224,120,320 |            **3.009167** |                3.749123 | Rejected: severe general-domain forgetting       |
+| **Stage B v2, update 8,000**           | **262,144,000** |            **3.135652** |            **3.348985** | **Promoted inside the preferred retention band** |
 
 Stage B v1 is intentionally retained as a negative experimental result: optimizing
 medical loss alone produced a stronger in-domain loss but unacceptable general-
@@ -55,10 +71,10 @@ matched pilot experiments.
 
 ### Final Stage B v2 evaluation
 
-| Distribution | Validation loss | Validation perplexity | Test loss | Test perplexity |
-|---|---:|---:|---:|---:|
-| Medical | **3.135652** | **23.004** | **3.162896** | **23.639** |
-| General | 3.348985 | 28.474 | 3.691913 | 40.122 |
+| Distribution | Validation loss | Validation perplexity |    Test loss | Test perplexity |
+| ------------ | --------------: | --------------------: | -----------: | --------------: |
+| Medical      |    **3.135652** |            **23.004** | **3.162896** |      **23.639** |
+| General      |        3.348985 |                28.474 |     3.691913 |          40.122 |
 
 Compared with the Stage A parent:
 
@@ -75,10 +91,10 @@ known and must not be used to tune future LoRA or SFT experiments.
 
 ### Stage C instruction-tuning results
 
-| Profile | Checkpoint | SFT test loss | SFT test PPL | Response-token accuracy | Role |
-|---|---:|---:|---:|---:|---|
-| Balanced retention | 125 | 3.120167 | 22.650 | 42.79% | Preferred-band comparator |
-| **Medical instruction specialist** | **588** | **2.879608** | **17.807** | **46.34%** | **Primary profile** |
+| Profile                            | Checkpoint | SFT test loss | SFT test PPL | Response-token accuracy | Role                      |
+| ---------------------------------- | ---------: | ------------: | -----------: | ----------------------: | ------------------------- |
+| Balanced retention                 |        125 |      3.120167 |       22.650 |                  42.79% | Preferred-band comparator |
+| **Medical instruction specialist** |    **588** |  **2.879608** |   **17.807** |              **46.34%** | **Primary profile**       |
 
 The primary specialist was registered before sealed-test access. Relative to the
 balanced profile, it reduced sealed SFT perplexity by **21.38%**, improved response-
@@ -86,6 +102,80 @@ token accuracy by **3.55 percentage points**, and improved all seven constituent
 sources. The balanced model remains available because it has better packed medical
 and general retention. Test results report this tradeoff; they did not choose the
 profiles.
+
+### Stage C sealed-test evaluation by source
+
+The sealed SFT test contains 350 examples and 68,903 supervised response tokens.
+Checkpoint `588` improved response-only loss and token accuracy over checkpoint
+`125` on every source, but the size of the gain varied considerably.
+
+| Source          | Examples | Balanced loss | Specialist loss | Specialist token accuracy | Accuracy change |
+| --------------- | -------: | ------------: | --------------: | ------------------------: | --------------: |
+| Alpaca          |       54 |         3.142 |       **3.124** |                    41.08% |        +0.33 pp |
+| ChatDoctor      |       41 |         3.698 |       **3.509** |                    37.62% |        +2.37 pp |
+| MedAlpaca       |       48 |         2.216 |       **2.021** |                **59.13%** |        +3.38 pp |
+| MedInstruct     |       48 |         2.508 |       **2.400** |                    50.92% |        +1.55 pp |
+| MedMCQA         |       58 |         3.683 |       **3.444** |                    41.68% |        +3.23 pp |
+| OpenMedInstruct |       52 |         3.102 |       **2.773** |                    47.48% |    **+4.98 pp** |
+| PubMedQA        |       49 |         3.309 |       **3.119** |                    44.06% |        +3.06 pp |
+
+**Interpretation.** The specialist consistently learned the response distributions
+present in the seven datasets. The strongest relative perplexity improvement was on
+OpenMedInstruct (28.05%), while Alpaca was nearly flat (1.80%). These measurements
+are teacher-forced: the model sees the correct preceding response tokens while each
+next token is scored. They therefore measure imitation of reference responses, not
+whether the model can independently construct a correct answer.
+
+### Adaptation versus retention
+
+SFT improved instruction imitation while weakening the Stage B v2 language-model
+capabilities. This is the central trade-off in the current result.
+
+| Checkpoint                 | Medical packed-test PPL | Change vs Stage B v2 | General packed-test PPL | Change vs Stage B v2 |
+| -------------------------- | ----------------------: | -------------------: | ----------------------: | -------------------: |
+| Stage B v2 parent (`8000`) |              **23.639** |                    — |              **40.122** |                    — |
+| Stage C balanced (`125`)   |                  25.904 |               +9.58% |                  42.625 |               +6.24% |
+| Stage C specialist (`588`) |                  26.726 |              +13.06% |                  43.942 |               +9.52% |
+
+The balanced profile stays within the predeclared preferred validation-retention
+bands. The specialist trades additional retention for lower SFT loss and remains
+inside the hard bands. Neither result establishes medical correctness.
+
+### Qualitative generation review: failed
+
+The specialist checkpoint passed the **operational** inference gate—its artifacts
+verified, weights loaded, logits were finite, and decoding completed—but its sample
+answers did not pass a human-readable quality check:
+
+- A hypertension prompt produced a repetitive response dominated by variants of
+  “I can understand your concern,” without explaining hypertension or when urgent
+  care may be needed.
+- An antibiotics prompt produced internally contradictory claims and suggested that
+  antibiotics could be a strategy for viral infection, which is medically unsafe.
+- Sampling exposed repetition, poor answer planning, weak instruction adherence,
+  and factual instability even though sealed response-token metrics improved.
+
+This is a useful negative result: **the loss curves and sealed token metrics are
+valid, but they are insufficient proxies for generation quality.** The Stage C
+checkpoints are retained as reproducible research artifacts and baselines, not as a
+usable medical assistant.
+
+### Evaluation discipline
+
+- Pilot and checkpoint selection used validation data only.
+- The two Stage C profiles were immutably registered before sealed-test access.
+- The sealed SFT, medical, and general tests were evaluated once and were not used
+  to change the registered profile roles.
+- Every reported checkpoint is tied to model, tokenizer, dataset, parent-lineage,
+  and manifest SHA-256 identities.
+- Since the test results and qualitative prompts are now known, future distillation,
+  LoRA, or preference experiments require new development sets and a new untouched
+  final test set.
+
+Machine-readable evidence is available in the
+[Stage C test report](reports/stage_c/stage_c_test_evaluation.json),
+[profile registration](reports/stage_c/stage_c_profile_registration.json), and
+[promotion record](reports/stage_c/promoted_stage_c.json).
 
 ## What this project demonstrates
 
@@ -135,25 +225,25 @@ optimizer, scheduler, precision scaler, RNG progression, and training state.
 
 ## Model architecture
 
-| Component | Final configuration |
-|---|---:|
-| Architecture | Decoder-only causal Transformer |
-| Unique parameters | 35,463,680 |
-| Vocabulary | 16,000 |
-| Hidden size | 512 |
-| Transformer layers | 8 |
-| Attention heads | 8 |
-| Head dimension | 64 |
-| SwiGLU intermediate size | 1,536 |
-| Maximum positions | 1,024 |
-| Training sequence length | 256 |
-| Normalization | Pre-norm RMSNorm, epsilon `1e-5` |
-| Positional encoding | RoPE, theta `10,000` |
-| Attention | PyTorch scaled-dot-product causal attention |
-| Projections | Bias-free attention and MLP projections |
-| Embeddings | Input embedding and LM head weights tied |
-| Dropout | 0.0 |
-| Initialization standard deviation | 0.02 |
+| Component                         |                         Final configuration |
+| --------------------------------- | ------------------------------------------: |
+| Architecture                      |             Decoder-only causal Transformer |
+| Unique parameters                 |                                  35,463,680 |
+| Vocabulary                        |                                      16,000 |
+| Hidden size                       |                                         512 |
+| Transformer layers                |                                           8 |
+| Attention heads                   |                                           8 |
+| Head dimension                    |                                          64 |
+| SwiGLU intermediate size          |                                       1,536 |
+| Maximum positions                 |                                       1,024 |
+| Training sequence length          |                                         256 |
+| Normalization                     |            Pre-norm RMSNorm, epsilon `1e-5` |
+| Positional encoding               |                        RoPE, theta `10,000` |
+| Attention                         | PyTorch scaled-dot-product causal attention |
+| Projections                       |     Bias-free attention and MLP projections |
+| Embeddings                        |    Input embedding and LM head weights tied |
+| Dropout                           |                                         0.0 |
+| Initialization standard deviation |                                        0.02 |
 
 The 1,024-position architecture permits later training or fine-tuning at longer
 contexts even though current packed pretraining examples contain 256 supervised
@@ -187,12 +277,12 @@ the configured license, quality, overlap, and phase-allocation policies.
 
 The model uses a project-trained GPT-2-style ByteLevel BPE tokenizer:
 
-| Property | Value |
-|---|---:|
-| Vocabulary size | 16,000 |
-| Document separator | `<eos>` |
-| Required generation tokens | `<bos>`, `<eos>` |
-| Tokenizer SHA-256 | `6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e` |
+| Property                   |                                                              Value |
+| -------------------------- | -----------------------------------------------------------------: |
+| Vocabulary size            |                                                             16,000 |
+| Document separator         |                                                            `<eos>` |
+| Required generation tokens |                                                   `<bos>`, `<eos>` |
+| Tokenizer SHA-256          | `6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e` |
 
 Tokenizer evaluation reports vocabulary utilization, token/word and byte/token
 efficiency, unknown-token rate, document lengths, and medical-term fragmentation.
@@ -214,28 +304,28 @@ ignore mask.
 
 ### Stage A corpus
 
-| Property | Value |
-|---|---:|
-| Packed sequences | 935,642 |
-| Supervised tokens | 239,524,352 |
-| Binary shards | 115 |
-| Sequence length | 256 |
+| Property           |                          Value |
+| ------------------ | -----------------------------: |
+| Packed sequences   |                        935,642 |
+| Supervised tokens  |                    239,524,352 |
+| Binary shards      |                            115 |
+| Sequence length    |                            256 |
 | General validation | 1,822 samples / 466,432 tokens |
-| General test | 1,185 samples / 303,360 tokens |
+| General test       | 1,185 samples / 303,360 tokens |
 
 ### Stage B v2 corpus
 
-| Property | Verified value |
-|---|---:|
-| Processed documents | 237,958 |
-| Exact stream tokens | 264,230,631 |
-| Medical tokens | 184,996,718 (70.0134%) |
-| General rehearsal tokens | 79,233,913 (29.9866%) |
-| Packed sequences | 1,028,134 |
-| Supervised targets | 263,202,304 |
-| Binary shards | 126 |
-| Stage A document overlap | **0** |
-| Medical/general evaluation overlap | **0** |
+| Property                           |         Verified value |
+| ---------------------------------- | ---------------------: |
+| Processed documents                |                237,958 |
+| Exact stream tokens                |            264,230,631 |
+| Medical tokens                     | 184,996,718 (70.0134%) |
+| General rehearsal tokens           |  79,233,913 (29.9866%) |
+| Packed sequences                   |              1,028,134 |
+| Supervised targets                 |            263,202,304 |
+| Binary shards                      |                    126 |
+| Stage A document overlap           |                  **0** |
+| Medical/general evaluation overlap |                  **0** |
 
 The corpus uses PMC Open Access, PubMed abstracts, and WikiDoc for medical exposure,
 with FineWeb-Edu, WikiText-103, and public-domain Project Gutenberg text for general
@@ -336,22 +426,22 @@ python scripts/artifacts/create_stage_c_test_archive.py
 
 ### Optimization
 
-| Setting | Stage A | Stage B v2 | Stage C SFT v1 |
-|---|---:|---:|---:|
-| Initialization | Random | Stage A weights | Stage B v2 weights |
-| Optimizer | AdamW | AdamW | AdamW |
-| Peak learning rate | `3e-4` | `4e-5` | `2e-5` selected |
-| Final learning rate | `3e-5` | `4e-6` | `2e-6` |
-| Betas | `(0.9, 0.95)` | `(0.9, 0.95)` | `(0.9, 0.95)` |
-| Weight decay | 0.1 | 0.05 | 0.01 |
-| Schedule | Warmup + cosine | Warmup + cosine | Warmup + cosine |
-| Warmup updates | 73 | 161 | 30 |
-| Micro-batch | 16 sequences | 16 sequences | 4 examples |
-| Gradient accumulation | 8 | 8 | 8 |
-| Nominal global batch | 32,768 tokens | 32,768 tokens | 32 examples |
-| Gradient clipping | 1.0 | 1.0 | 1.0 |
-| Precision on T4 | FP16 + scaler | FP16 + scaler | FP16 + scaler |
-| Epochs | 1 | 1 | Up to 3 |
+| Setting               |         Stage A |      Stage B v2 |     Stage C SFT v1 |
+| --------------------- | --------------: | --------------: | -----------------: |
+| Initialization        |          Random | Stage A weights | Stage B v2 weights |
+| Optimizer             |           AdamW |           AdamW |              AdamW |
+| Peak learning rate    |          `3e-4` |          `4e-5` |    `2e-5` selected |
+| Final learning rate   |          `3e-5` |          `4e-6` |             `2e-6` |
+| Betas                 |   `(0.9, 0.95)` |   `(0.9, 0.95)` |      `(0.9, 0.95)` |
+| Weight decay          |             0.1 |            0.05 |               0.01 |
+| Schedule              | Warmup + cosine | Warmup + cosine |    Warmup + cosine |
+| Warmup updates        |              73 |             161 |                 30 |
+| Micro-batch           |    16 sequences |    16 sequences |         4 examples |
+| Gradient accumulation |               8 |               8 |                  8 |
+| Nominal global batch  |   32,768 tokens |   32,768 tokens |        32 examples |
+| Gradient clipping     |             1.0 |             1.0 |                1.0 |
+| Precision on T4       |   FP16 + scaler |   FP16 + scaler |      FP16 + scaler |
+| Epochs                |               1 |               1 |            Up to 3 |
 
 BF16 is selected automatically on compatible hardware; FP16 uses a saved gradient
 scaler, and CPU execution falls back to FP32.
@@ -380,11 +470,11 @@ an epoch.
 All Stage B experiments begin from the exact Stage A parent identity. Three
 500-update pilots consumed the same batches in the same order:
 
-| Pilot | Trainable scope | L2-SP | Medical validation loss | General validation loss | General PPL degradation |
-|---|---|---:|---:|---:|---:|
-| **Control** | All parameters | 0 | **3.371878** | 3.242126 | 4.47% |
-| Selective freezing | Upper layers | 0 | 3.406951 | 3.207393 | 0.91% |
-| Selective freezing + L2-SP | Upper layers | Enabled | 3.451979 | **3.199858** | **0.15%** |
+| Pilot                      | Trainable scope |   L2-SP | Medical validation loss | General validation loss | General PPL degradation |
+| -------------------------- | --------------- | ------: | ----------------------: | ----------------------: | ----------------------: |
+| **Control**                | All parameters  |       0 |            **3.371878** |                3.242126 |                   4.47% |
+| Selective freezing         | Upper layers    |       0 |                3.406951 |                3.207393 |                   0.91% |
+| Selective freezing + L2-SP | Upper layers    | Enabled |                3.451979 |            **3.199858** |               **0.15%** |
 
 Because all candidates were inside the preferred retention band, the predeclared
 rule selected the control arm with the best medical loss. The full run then selected
@@ -484,13 +574,8 @@ Run the complete regression suite:
 python -m pytest -q
 ```
 
-Verified result at the current repository state:
-
-```text
-396 passed in 11.33s
-```
-
-Targeted coverage includes packed-label alignment, SFT response masking,
+The suite contains more than 430 tests. Targeted coverage includes packed-label
+alignment, SFT response masking,
 deterministic sampler order, exact batch-cursor resume, scheduler boundaries,
 precision policy, token-weighted evaluation, optimizer grouping, checkpoint
 corruption and compatibility failures, RNG restoration, Drive mirroring, Stage B
@@ -560,6 +645,7 @@ checkpoints back to Drive, and support recovery after runtime disconnection.
 - [Stage B v1 Colab notebook](notebooks/colab_stage_b.ipynb)
 - [Stage B v2 self-contained notebook](notebooks/colab_stage_b_v2.ipynb)
 - [Stage B v2 Colab pilot guide](reports/stage_b/v2/COLAB_PILOT_GUIDE.md)
+- [Stage C self-contained SFT notebook](notebooks/colab_stage_c_sft.ipynb)
 
 Stage A also provides Colab and RunPod profiles:
 
@@ -570,25 +656,35 @@ Stage A also provides Colab and RunPod profiles:
 
 ### Promoted identities
 
-| Artifact | Stage A parent | Stage B v2 promoted |
-|---|---|---|
-| Checkpoint | `checkpoint_00007250` | `checkpoint_00008000` |
-| Model SHA-256 | `2443cb5875c11e9c0c027ead53d4f9adab099e0cd4b19fd47fe08181b0640423` | `799fe9c34648044d21bf73258cd55a46716167f89dcf64e2c0487e0382d65c14` |
+| Artifact                    | Stage A parent                                                     | Stage B v2 promoted                                                |
+| --------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| Checkpoint                  | `checkpoint_00007250`                                              | `checkpoint_00008000`                                              |
+| Model SHA-256               | `2443cb5875c11e9c0c027ead53d4f9adab099e0cd4b19fd47fe08181b0640423` | `799fe9c34648044d21bf73258cd55a46716167f89dcf64e2c0487e0382d65c14` |
 | Checkpoint manifest SHA-256 | `a7e132692f31b505b7d7db9fa7e6d773d5c006904fa0d774edb1ba6c7f0408a4` | `ea60b0d6b66ea3bd1987f9ff7bbdd75ba34bc0f05b7c21349ad6ef90615a9b71` |
-| Tokenizer SHA-256 | `6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e` | Same tokenizer |
+| Tokenizer SHA-256           | `6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e` | Same tokenizer                                                     |
 
 The Stage B v2 lineage embeds the exact Stage A parent model, checkpoint manifest,
 and tokenizer hashes, plus train, medical-validation, and general-validation
 manifest hashes.
 
+Stage C preserves two registered profiles descended from Stage B v2:
+
+| Profile                        | Checkpoint            | Model SHA-256                                                      | Checkpoint manifest SHA-256                                        |
+| ------------------------------ | --------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| Balanced retention             | `checkpoint_00000125` | `275939cf7bb544aecb461f98956da2791b820757beae818ce4e7590029a08f39` | `0cf0080de0b74f2a5406e2e47f83b58b92a9f01442fa9abd15a085f12a04fa8f` |
+| Medical-instruction specialist | `checkpoint_00000588` | `231c0376ee4cd3b58216605c7ab24e1d76aae80404257b298e589f0695dd10d4` | `87200c551c89b418e5266ef1fd2e94b62557fb8cb20f2f02c5a97375285f3253` |
+
+Both use the same verified tokenizer identity. The immutable registration and
+promotion reports record that test data did not select either profile.
+
 ### Preservation policy
 
-| Asset | Storage policy |
-|---|---|
-| Source code, configs, tests, reports, pointers | Commit to Git |
-| Tokenized shards and raw/intermediate datasets | External storage; excluded from Git |
-| Full resumable checkpoints | Local protected artifacts plus durable cloud storage |
-| Preservation archives | External storage with adjacent SHA-256 record |
+| Asset                                          | Storage policy                                       |
+| ---------------------------------------------- | ---------------------------------------------------- |
+| Source code, configs, tests, reports, pointers | Commit to Git                                        |
+| Tokenized shards and raw/intermediate datasets | External storage; excluded from Git                  |
+| Full resumable checkpoints                     | Local protected artifacts plus durable cloud storage |
+| Preservation archives                          | External storage with adjacent SHA-256 record        |
 
 The Stage B v2 preservation archive contains the promoted update-8,000 checkpoint,
 the final update-8,033 checkpoint, metrics, configs, tokenizer, manifests, and reports.
@@ -600,6 +696,18 @@ b5e4f75623d1af74dd825c873d549109bd9ad42e0d150cfffc279f0dd9c64263
 
 All 41 inventoried files and both preserved checkpoints passed size and hash
 verification after local extraction.
+
+The Stage C preservation archive contains both complete profile checkpoints,
+metrics, contracts, tokenizer, promotion/evaluation records, and lineage evidence.
+It is **852,684,800 bytes** with SHA-256:
+
+```text
+f96c66d9ced820aa5056473a9fdcec741939cb0ef826fffbaff88cc9037d4994
+```
+
+The extracted 37-file bundle and both checkpoints passed the repository's
+preservation verifier. Large archives and model weights remain outside Git; their
+small manifests and reports are tracked in the repository.
 
 Exact cross-machine numerical identity still depends on compatible PyTorch, CUDA,
 GPU kernels, and deterministic backend behavior. The saved state supports exact
@@ -616,12 +724,13 @@ reports/
   stage_a/                 Stage A evaluation, promotion, and inference evidence
   stage_b/v1/              Catastrophic-forgetting comparison experiment
   stage_b/v2/              V2 plan, audits, evaluation, promotion, and preservation
+  stage_c/                 SFT data, selection, sealed test, promotion, and limitations
   comparisons/             Cross-experiment adaptation registry
 scripts/
   assembly/                Corpus construction and overlap audits
   artifacts/               Preservation export and verification
-  evaluation/              Promoted-model inference gates
-  training/                Stage A, Stage B v1, and Stage B v2 entry points
+  evaluation/              Selection, promotion, sealed evaluation, and inference gates
+  training/                Stage A, Stage B, and Stage C entry points
   tokenizer/               Tokenizer train/evaluate/compare utilities
 src/medical_slm/
   data/                    Standardization, filtering, deduplication, packing, SFT
@@ -644,26 +753,79 @@ tests/                     Unit, regression, and tiny end-to-end tests
 - [Promoted Stage B v2 pointer](reports/stage_b/v2/promoted_stage_b_v2.json)
 - [Stage C experiment plan](reports/stage_c/EXPERIMENT_PLAN.md)
 - [Stage C final experiment report](reports/stage_c/EXPERIMENT_REPORT.md)
+- [Stage C sealed-test evaluation](reports/stage_c/stage_c_test_evaluation.json)
+- [Stage C promotion record](reports/stage_c/promoted_stage_c.json)
+- [Stage C preservation manifest](reports/stage_c/stage_c_preservation_manifest.json)
 - [Continual-adaptation comparison registry](reports/comparisons/continual_adaptation_registry.json)
 
-## Limitations and next work
+## Known limitations
 
-- Perplexity measures next-token prediction, not medical truthfulness or safety.
-- The 35.5M-parameter model has limited capacity and should not be compared directly
-  with production-scale medical LLMs.
-- Stage C supports instruction-formatted generation but has not undergone preference
-  optimization, retrieval augmentation, clinical calibration, or safety alignment.
-- Evaluation currently emphasizes held-out language-model loss rather than medical
-  QA accuracy, hallucination rate, calibration, bias, privacy, or adversarial safety.
-- The known test sets are sealed from all future tuning decisions; new untouched
-  benchmarks will be required for repeated model-development comparisons.
-- The next active experiment is a controlled LoRA comparison using the same Stage B
-  v2 parent and Stage C data contracts. Because Stage C test results are now known,
-  further tuning requires a new untouched final benchmark.
+### Model capacity and generation quality
 
-The project demonstrates a reproducible training and experimentation system for a
-small domain language model. It does **not** claim that the resulting checkpoint is a
-medical expert or a deployable assistant.
+- At 35.5M parameters, the model can learn local language and dataset patterns but
+  has limited capacity for robust medical knowledge, multi-step reasoning, long-form
+  answer planning, and reliable instruction following.
+- Stage C's specialist improved response-only test perplexity and token accuracy on
+  all seven sources, yet its open-ended answers were repetitive, poorly grounded,
+  and sometimes medically incorrect. This metric/behavior mismatch is the most
+  important unresolved result.
+- The current model has no retrieval system, external knowledge source, citation
+  verification, uncertainty calibration, or mechanism for checking its own claims.
+- Decoding parameters may change fluency or repetition, but they cannot repair
+  missing knowledge or make an unsafe checkpoint clinically reliable.
+
+### Evaluation limits
+
+- Perplexity and response-token accuracy measure prediction of a reference sequence;
+  they do not establish factuality, reasoning, helpfulness, calibration, or safety.
+- The project does not yet report clinician-reviewed correctness, hallucination
+  rate, emergency-triage sensitivity, contraindication safety, demographic bias,
+  memorization/privacy risk, or adversarial robustness.
+- The qualitative review used a small diagnostic prompt set. It is enough to reject
+  a claim of readiness, but not enough to estimate a population-level failure rate.
+- All existing Stage C tests and diagnostic prompts are now known. Reusing them for
+  model decisions would leak test information into development.
+
+### Data and release limits
+
+- Instruction data contain heterogeneous styles and quality levels; optimizing
+  likelihood can reproduce verbosity, contradictions, and weak source answers.
+- Some Stage C source licenses remain noncommercial or require manual review.
+  Consequently, the promoted Stage C profiles are restricted to internal research
+  and the checkpoints are not approved for public release.
+- This is not a clinical system and must not be used for diagnosis, treatment,
+  medication decisions, triage, or patient-facing advice.
+
+## Planned distillation and alignment work
+
+The next iteration will address generation behavior rather than merely extending
+the existing SFT run:
+
+1. **Create new evaluation contracts.** Build fresh development, preference-
+   validation, safety, and sealed-test sets before training. Include factuality,
+   relevance, repetition, refusal, uncertainty, emergency escalation, and concise
+   answer rubrics.
+2. **Curate verified teacher responses.** Generate and filter approximately
+   10,000–20,000 concise medical-education examples from a stronger teacher. Retain
+   provenance, reject unsupported claims, and use expert or evidence-backed review
+   for safety-critical material.
+3. **Run sequence-level distillation.** Compare the Stage B v2 parent and Stage C
+   balanced checkpoint as initialization points. Train first with LoRA to limit
+   destructive weight movement and preserve a cheap, reversible baseline; keep a
+   matched full-parameter arm only if resources permit.
+4. **Use behavior-aware validation.** Select checkpoints with a composite gate:
+   teacher-response loss plus factuality, instruction adherence, repetition, and
+   medical/general retention. Token loss alone cannot select the winner.
+5. **Apply conservative preference alignment.** Only after distilled generations
+   are coherent, construct roughly 2,000–5,000 verified chosen/rejected pairs and
+   compare DPO against the distilled checkpoint. Preference optimization is not a
+   substitute for missing knowledge and will not be used to hide a weak SFT base.
+6. **Perform one new sealed evaluation.** Compare Stage B v2, Stage C balanced,
+   Stage C specialist, distilled LoRA, and any DPO model on the same untouched test
+   contract. Preserve both successful and negative results.
+
+The intended endpoint is a narrow, research-oriented medical education model with
+measured boundaries—not a general medical expert or deployable assistant.
 
 ## License
 
