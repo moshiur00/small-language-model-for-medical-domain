@@ -58,8 +58,13 @@ def iter_files(path: Path):
     yield from sorted(path.rglob("*"), key=lambda item: item.as_posix())
 
 
-def create_archive(output: Path) -> tuple[Path, Path]:
-    missing = [path for path in DEFAULT_INPUTS if not path.exists()]
+def create_archive(
+    output: Path,
+    *,
+    inputs: tuple[Path, ...] | None = None,
+) -> tuple[Path, Path]:
+    selected_inputs = DEFAULT_INPUTS if inputs is None else inputs
+    missing = [path for path in selected_inputs if not path.exists()]
     if missing:
         raise FileNotFoundError(
             "Missing Stage C archive inputs: " + ", ".join(map(str, missing))
@@ -71,7 +76,7 @@ def create_archive(output: Path) -> tuple[Path, Path]:
     temporary.unlink(missing_ok=True)
     try:
         with tarfile.open(temporary, "w", format=tarfile.PAX_FORMAT) as archive:
-            for root in DEFAULT_INPUTS:
+            for root in selected_inputs:
                 for path in iter_files(root):
                     archive.add(
                         path,

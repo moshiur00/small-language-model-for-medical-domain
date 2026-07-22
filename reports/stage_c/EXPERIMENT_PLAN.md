@@ -1,6 +1,6 @@
 # Stage C v1 Supervised Instruction Fine-Tuning Plan
 
-**Status:** Full training complete; validation-only final selection pending
+**Status:** Balanced and specialist profiles validated; pre-test registration pending
 **Method:** Full-parameter response-only supervised instruction fine-tuning  
 **Parent:** Stage B v2 `checkpoint_00008000`  
 **Selection:** Validation only, subject to medical and general retention gates
@@ -130,3 +130,7 @@ Perplexity and generated examples do not establish factuality or clinical safety
 9. ~~Lock and execute the full run.~~ Complete: 588 updates, 3 epochs, no safety
    or early stop; best preferred SFT loss `3.0790578928403876`.
 10. Select on validation, open test once, promote, preserve, and add inference.
+    Validation selected the balanced profile at update 125; seven-source analysis
+    registered update 588 as the specialist candidate after it improved all sources
+    while remaining inside both hard retention bands. Pre-test locking, sealed test,
+    promotion, preservation, and inference remain.

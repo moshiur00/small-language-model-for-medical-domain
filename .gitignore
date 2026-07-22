@@ -105,3 +105,5 @@ stage_b_v2_preservation.tar.sha256
 stage_b_v2_preservation.tar
 artifacts/exports/stage-c-sft-data.tar
 artifacts/exports/stage-c-sft-data.tar.sha256
+artifacts/exports/stage-c-sealed-test.tar
+artifacts/exports/stage-c-sealed-test.tar.sha256

@@ -290,7 +290,15 @@ python scripts/artifacts/create_stage_c_data_archive.py
 Then open [the Stage C Colab notebook](notebooks/colab_stage_c_sft.ipynb). It
 contains focused regression and initialization checks, the zero-update triple
 baseline, one-batch response-mask verification, matched `1e-5`/`2e-5` pilots,
-validation-only pilot selection, and standalone fresh/resume full-run cells.
+validation-only pilot selection, standalone fresh/resume full-run cells, immutable
+balanced/specialist registration, and a guarded one-time test evaluator.
+
+The test tensors are intentionally absent from the training archive. Only after
+profile registration, create and upload the separate sealed archive and checksum:
+
+```powershell
+python scripts/artifacts/create_stage_c_test_archive.py
+```
 
 ### Optimization
 

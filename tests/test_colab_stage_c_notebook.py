@@ -89,3 +89,26 @@ def test_stage_c_source_analysis_is_validation_only() -> None:
     assert "analysis_uses_test_data" in source_analysis
     assert "sft_stage_c_v1/test" not in source_analysis
     assert "evaluation_medical/test" not in source_analysis
+
+
+def test_stage_c_profiles_are_locked_before_guarded_test_access() -> None:
+    registration = next(
+        source
+        for source in code_cells()
+        if "STAGE C PROFILE REGISTRATION: VERIFIED AND LOCKED" in source
+    )
+    sealed_test = next(
+        source
+        for source in code_cells()
+        if "STAGE C SEALED TEST EVALUATION: VERIFIED ONCE" in source
+    )
+    assert "register_stage_c_profiles.py" in registration
+    assert "checkpoint_00000125" in registration
+    assert "checkpoint_00000588" in registration
+    assert "evaluate_stage_c_test.py" in sealed_test
+    assert "stage-c-sealed-test.tar" in sealed_test
+    assert "stage_c_test_evaluation_status.json" in sealed_test
+    assert "assert not TEST_REPORT.exists() and not TEST_SENTINEL.exists()" in sealed_test
+    assert sealed_test.index("PROFILE_REGISTRATION.is_file()") < sealed_test.index(
+        "tar', '-xf'"
+    )
