@@ -1,0 +1,274 @@
+{
+  "dataset": {
+    "accepted_examples": 6967,
+    "input_sha256": "c8e2d1bde71a299d8506726470653f2ce6f140c5b6f46a37e41e65bc479f987d",
+    "manifest_sha256": "50fbb9973eb8205a9d0e4e12767ad893e933370b1f0a9a0ab8fde12deb9c8934",
+    "root": "datasets\\tokenized\\sft_stage_c_v1",
+    "splits": {
+      "test": 350,
+      "train": 6248,
+      "validation": 369
+    },
+    "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+  },
+  "format_version": 1,
+  "generated_at": "2026-07-22T14:24:10.616824+00:00",
+  "license_audit": {
+    "internal_research_training_status": "passed",
+    "interpretation": "Dataset-license metadata can gate internal corpus use, but it does not by itself determine whether trained model weights may be distributed.",
+    "invalid_license_decision_examples": 0,
+    "manual_review_examples": 2999,
+    "public_model_release_status": "blocked_pending_manual_review",
+    "sources": {
+      "alpaca": {
+        "commercial_use": [
+          false
+        ],
+        "decisions": {
+          "review": 999
+        },
+        "examples": 999,
+        "licenses": [
+          "cc-by-nc-4.0"
+        ],
+        "public_model_release_status": "requires_manual_review",
+        "redistribution": [
+          true
+        ]
+      },
+      "chatdoctor": {
+        "commercial_use": [
+          true
+        ],
+        "decisions": {
+          "pass": 1000
+        },
+        "examples": 1000,
+        "licenses": [
+          "apache-2.0"
+        ],
+        "public_model_release_status": "not_assessed_by_dataset_license_gate",
+        "redistribution": [
+          true
+        ]
+      },
+      "medalpaca": {
+        "commercial_use": [
+          false
+        ],
+        "decisions": {
+          "review": 1000
+        },
+        "examples": 1000,
+        "licenses": [
+          "cc-unspecified-review"
+        ],
+        "public_model_release_status": "requires_manual_review",
+        "redistribution": [
+          false
+        ]
+      },
+      "medinstruct": {
+        "commercial_use": [
+          false
+        ],
+        "decisions": {
+          "review": 1000
+        },
+        "examples": 1000,
+        "licenses": [
+          "cc-by-nc-4.0"
+        ],
+        "public_model_release_status": "requires_manual_review",
+        "redistribution": [
+          true
+        ]
+      },
+      "medmcqa": {
+        "commercial_use": [
+          true
+        ],
+        "decisions": {
+          "pass": 1000
+        },
+        "examples": 1000,
+        "licenses": [
+          "apache-2.0"
+        ],
+        "public_model_release_status": "not_assessed_by_dataset_license_gate",
+        "redistribution": [
+          true
+        ]
+      },
+      "openmedinstruct": {
+        "commercial_use": [
+          true
+        ],
+        "decisions": {
+          "pass": 968
+        },
+        "examples": 968,
+        "licenses": [
+          "apache-2.0"
+        ],
+        "public_model_release_status": "not_assessed_by_dataset_license_gate",
+        "redistribution": [
+          true
+        ]
+      },
+      "pubmedqa": {
+        "commercial_use": [
+          true
+        ],
+        "decisions": {
+          "pass": 1000
+        },
+        "examples": 1000,
+        "licenses": [
+          "mit"
+        ],
+        "public_model_release_status": "not_assessed_by_dataset_license_gate",
+        "redistribution": [
+          true
+        ]
+      }
+    }
+  },
+  "near_duplicate_audit": {
+    "candidate_matches": 73,
+    "configuration": {
+      "lsh_threshold": 0.75,
+      "num_permutations": 128,
+      "representation": "normalized_instruction_context_word_shingles",
+      "seed": 42,
+      "shingle_size": 3,
+      "similarity_threshold": 0.9
+    },
+    "cross_source_pairs": 0,
+    "cross_split_clusters": 0,
+    "cross_split_pairs": 0,
+    "near_duplicate_clusters": 5,
+    "near_duplicate_pairs": 10,
+    "pairs": [
+      {
+        "exact_jaccard_similarity": 0.931034,
+        "left_id": "medalpaca-train-000000517-6ddcdd2ff75fa258",
+        "left_prompt_group_sha256": "3f038869e88953e0d2ba90849f1df9bdbb87e12f2c9962c31f699807f7723041",
+        "left_source": "medalpaca",
+        "left_split": "train",
+        "right_id": "medalpaca-train-000000518-e316bb517a101f8c",
+        "right_prompt_group_sha256": "648820a55b85c7d91f78114688f24208a4ffc1fa6486148393a777262b11570b",
+        "right_source": "medalpaca",
+        "right_split": "train"
+      },
+      {
+        "exact_jaccard_similarity": 1.0,
+        "left_id": "medalpaca-train-000000582-886193ae157d546f",
+        "left_prompt_group_sha256": "a0de6346dec4dd82941f2ca8a1d05b13ed56431a9a9e0e65f0df82c7551d04a1",
+        "left_source": "medalpaca",
+        "left_split": "train",
+        "right_id": "medalpaca-train-000000584-b8bce1f20f4c649a",
+        "right_prompt_group_sha256": "cf0955bc3a8b3ca28c3e9d39cf77f035f4844c0c5ad044cdaa16a6b3742f24b5",
+        "right_source": "medalpaca",
+        "right_split": "train"
+      },
+      {
+        "exact_jaccard_similarity": 0.909091,
+        "left_id": "medalpaca-train-000000855-c73aeb1a9650f127",
+        "left_prompt_group_sha256": "ec443477fba8c7c042650c9e8dd553d5b6fa2ce6e7b296de6f6d563f94236b12",
+        "left_source": "medalpaca",
+        "left_split": "train",
+        "right_id": "medalpaca-train-000000856-b1142e5a7a818a1e",
+        "right_prompt_group_sha256": "7907584e5cfb8dfffb93097ef874f7276e65e6c8864eeafcbf4b0dfe620f1db7",
+        "right_source": "medalpaca",
+        "right_split": "train"
+      },
+      {
+        "exact_jaccard_similarity": 0.909091,
+        "left_id": "medalpaca-train-000000855-c73aeb1a9650f127",
+        "left_prompt_group_sha256": "ec443477fba8c7c042650c9e8dd553d5b6fa2ce6e7b296de6f6d563f94236b12",
+        "left_source": "medalpaca",
+        "left_split": "train",
+        "right_id": "medalpaca-train-000000857-693ec639274d618f",
+        "right_prompt_group_sha256": "0a9e5b973725f520af12126c47d86964a14958cb7b3570e7032f9a2b8182962c",
+        "right_source": "medalpaca",
+        "right_split": "train"
+      },
+      {
+        "exact_jaccard_similarity": 0.909091,
+        "left_id": "medalpaca-train-000000855-c73aeb1a9650f127",
+        "left_prompt_group_sha256": "ec443477fba8c7c042650c9e8dd553d5b6fa2ce6e7b296de6f6d563f94236b12",
+        "left_source": "medalpaca",
+        "left_split": "train",
+        "right_id": "medalpaca-train-000000861-10f2c34ba4ef80b9",
+        "right_prompt_group_sha256": "2906343db4303e3ff0dca2d68ddb096fbd0b0193a4fd6baff19cd2c9f99756c3",
+        "right_source": "medalpaca",
+        "right_split": "train"
+      },
+      {
+        "exact_jaccard_similarity": 0.909091,
+        "left_id": "medalpaca-train-000000856-b1142e5a7a818a1e",
+        "left_prompt_group_sha256": "7907584e5cfb8dfffb93097ef874f7276e65e6c8864eeafcbf4b0dfe620f1db7",
+        "left_source": "medalpaca",
+        "left_split": "train",
+        "right_id": "medalpaca-train-000000857-693ec639274d618f",
+        "right_prompt_group_sha256": "0a9e5b973725f520af12126c47d86964a14958cb7b3570e7032f9a2b8182962c",
+        "right_source": "medalpaca",
+        "right_split": "train"
+      },
+      {
+        "exact_jaccard_similarity": 0.909091,
+        "left_id": "medalpaca-train-000000856-b1142e5a7a818a1e",
+        "left_prompt_group_sha256": "7907584e5cfb8dfffb93097ef874f7276e65e6c8864eeafcbf4b0dfe620f1db7",
+        "left_source": "medalpaca",
+        "left_split": "train",
+        "right_id": "medalpaca-train-000000861-10f2c34ba4ef80b9",
+        "right_prompt_group_sha256": "2906343db4303e3ff0dca2d68ddb096fbd0b0193a4fd6baff19cd2c9f99756c3",
+        "right_source": "medalpaca",
+        "right_split": "train"
+      },
+      {
+        "exact_jaccard_similarity": 0.909091,
+        "left_id": "medalpaca-train-000000857-693ec639274d618f",
+        "left_prompt_group_sha256": "0a9e5b973725f520af12126c47d86964a14958cb7b3570e7032f9a2b8182962c",
+        "left_source": "medalpaca",
+        "left_split": "train",
+        "right_id": "medalpaca-train-000000861-10f2c34ba4ef80b9",
+        "right_prompt_group_sha256": "2906343db4303e3ff0dca2d68ddb096fbd0b0193a4fd6baff19cd2c9f99756c3",
+        "right_source": "medalpaca",
+        "right_split": "train"
+      },
+      {
+        "exact_jaccard_similarity": 1.0,
+        "left_id": "medmcqa-train-000000139-c8515c3ce2df1b06",
+        "left_prompt_group_sha256": "72257639b645457aa19350e21ad4fec275ddabc19ade28527452fd1ae9f48b60",
+        "left_source": "medmcqa",
+        "left_split": "train",
+        "right_id": "medmcqa-train-000000197-ac89a5f674c8c468",
+        "right_prompt_group_sha256": "3a9bde6ce6560a6b0af40b1e877e07cf1f0ebbcf7b9a961c9af4e97e1b96ee43",
+        "right_source": "medmcqa",
+        "right_split": "train"
+      },
+      {
+        "exact_jaccard_similarity": 1.0,
+        "left_id": "medmcqa-train-000000436-097186c2c1fc2fd5",
+        "left_prompt_group_sha256": "54ef0965b4fa3a5aec32d86954473d9377800c6dec057f5c5696cf33bdb5ce57",
+        "left_source": "medmcqa",
+        "left_split": "train",
+        "right_id": "medmcqa-train-000000564-41a48b5d7cc295f5",
+        "right_prompt_group_sha256": "b4f61ba9bd0cb15430fa356b8168deacbba80f269a02cc491d0625dcef64e0f9",
+        "right_source": "medmcqa",
+        "right_split": "train"
+      }
+    ],
+    "records": 6967,
+    "status": "passed"
+  },
+  "stage": "supervised_instruction_finetuning_stage_c_v1",
+  "status": "passed_for_internal_research",
+  "training_readiness": {
+    "internal_research_license_gate": "passed",
+    "near_duplicate_gate": "passed",
+    "public_model_release_gate": "blocked_pending_manual_review"
+  }
+}

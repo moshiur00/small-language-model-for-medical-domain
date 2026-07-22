@@ -3,7 +3,7 @@
 **A 35.5M-parameter decoder-only Transformer built and trained from scratch, then
 adapted to medical text with retention-aware continual pretraining.**
 
-`Python 3.11+` · `PyTorch` · `Custom 16K BPE tokenizer` · `387 tests` ·
+`Python 3.11+` · `PyTorch` · `Custom 16K BPE tokenizer` · `396 tests` ·
 `Deterministic resume` · `Colab/RunPod workflows`
 
 This portfolio project implements the complete path from raw text to a promoted
@@ -29,7 +29,7 @@ autoregressive inference.
 | Stage B v2 retention-aware pretraining | **Complete and promoted** | Checkpoint `00008000` improved medical validation while remaining inside the declared retention band |
 | Stage B v2 inference gate | **Passed** | Checkpoint identity, lineage, tokenizer compatibility, finite logits, and generation verified |
 | LoRA comparison | Planned | Must use the same Stage A parent and validation-only selection contract |
-| Supervised fine-tuning | Infrastructure prepared, training not started | Separate response-masked causal-loss path implemented |
+| Stage C supervised fine-tuning | Dataset v1 rebuilt and verified; training not started | 6,967 examples in grouped train/validation/sealed-test splits |
 
 The current promoted domain-adapted model is **Stage B v2
 `checkpoint_00008000`**. Its full checkpoint is preserved locally and in Google
@@ -230,6 +230,21 @@ Detailed data evidence:
 - [Corpus verification](reports/stage_b/v2/corpus_verification.json)
 - [Stage B data-preparation report](reports/stage_b/DATA_PREPARATION_REPORT.md)
 
+## Stage C supervised instruction data
+
+Stage C v1 uses only the existing balanced seven-source instruction pool. The
+corrected builder preserved instructions during truncation, rejected 33 invalid or
+overlength examples, and produced 6,248 train, 369 validation, and 350 sealed test
+examples. All tensor and structured artifacts match their manifest hashes, with zero
+record-ID or normalized prompt-group overlap across splits. Cross-source near-
+duplicate analysis found no cross-source or cross-split leakage. The dataset is
+approved for internal research training. Public checkpoint release remains blocked
+because 2,999 examples carry noncommercial or manual-review license metadata.
+
+- [Stage C dataset specification](reports/stage_c/DATASET_SPECIFICATION.md)
+- [Stage C experiment plan](reports/stage_c/EXPERIMENT_PLAN.md)
+- [Stage C duplicate and license audit](reports/stage_c/stage_c_data_audit.json)
+
 ## Training system
 
 ### Optimization
@@ -385,7 +400,7 @@ python -m pytest -q
 Verified result at the current repository state:
 
 ```text
-387 passed in 15.37s
+396 passed in 11.33s
 ```
 
 Targeted coverage includes packed-label alignment, SFT response masking,
@@ -553,9 +568,9 @@ tests/                     Unit, regression, and tiny end-to-end tests
   QA accuracy, hallucination rate, calibration, bias, privacy, or adversarial safety.
 - The known test sets are sealed from all future tuning decisions; new untouched
   benchmarks will be required for repeated model-development comparisons.
-- The next controlled experiment is LoRA continual adaptation from the same Stage A
-  parent, using the same validation contract. SFT should follow only after selecting
-  the adaptation strategy.
+- The next active experiment is full-parameter Stage C supervised instruction fine-
+  tuning from the promoted Stage B v2 checkpoint. A later LoRA run remains planned as
+  a controlled parameter-efficient comparison.
 
 The project demonstrates a reproducible training and experimentation system for a
 small domain language model. It does **not** claim that the resulting checkpoint is a
