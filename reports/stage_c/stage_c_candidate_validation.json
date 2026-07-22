@@ -1,0 +1,181 @@
+{
+  "candidates": [
+    {
+      "checkpoint": "checkpoint_00000125",
+      "checkpoint_identity": {
+        "checkpoint_manifest_sha256": "0cf0080de0b74f2a5406e2e47f83b58b92a9f01442fa9abd15a085f12a04fa8f",
+        "checkpoint_name": "checkpoint_00000125",
+        "model_sha256": "275939cf7bb544aecb461f98956da2791b820757beae818ce4e7590029a08f39",
+        "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+      },
+      "general_perplexity_degradation_fraction": 0.05868189699065196,
+      "general_retention_validation": {
+        "batches": 228,
+        "duration_seconds": 4.326722371999949,
+        "loss": 3.406009947014441,
+        "perplexity": 30.14472493033276,
+        "samples": 1822,
+        "tokens": 466432
+      },
+      "hard_band_eligible": true,
+      "improves_sft_baseline": true,
+      "medical_perplexity_degradation_fraction": 0.09913760381664849,
+      "medical_retention_validation": {
+        "batches": 488,
+        "duration_seconds": 8.798275957999977,
+        "loss": 3.230177611706949,
+        "perplexity": 25.284147332747196,
+        "samples": 3897,
+        "tokens": 997632
+      },
+      "pointer_sources": [
+        "best_preferred"
+      ],
+      "preferred": true,
+      "sft_validation": {
+        "batches": 47,
+        "duration_seconds": 2.9894153699999606,
+        "loss": 3.0790578928403876,
+        "perplexity": 21.73791330249428,
+        "response_token_accuracy": 0.42964451043759283,
+        "samples": 369,
+        "tokens": 68694
+      }
+    },
+    {
+      "checkpoint": "checkpoint_00000575",
+      "checkpoint_identity": {
+        "checkpoint_manifest_sha256": "24f44e0fe28767bbbb63a27687b5ef358a1069b9772856537518fe2d716a399c",
+        "checkpoint_name": "checkpoint_00000575",
+        "model_sha256": "214d1975e06a9482a581719761ea2bb680aa3e0dbfcb8c7b23e472a4a10fe871",
+        "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+      },
+      "general_perplexity_degradation_fraction": 0.08776596534963943,
+      "general_retention_validation": {
+        "batches": 228,
+        "duration_seconds": 4.379556287000014,
+        "loss": 3.4331113259930626,
+        "perplexity": 30.972859654303026,
+        "samples": 1822,
+        "tokens": 466432
+      },
+      "hard_band_eligible": true,
+      "improves_sft_baseline": true,
+      "medical_perplexity_degradation_fraction": 0.13443277482814597,
+      "medical_retention_validation": {
+        "batches": 488,
+        "duration_seconds": 9.116506026000025,
+        "loss": 3.2617845040710662,
+        "perplexity": 26.096064149067928,
+        "samples": 3897,
+        "tokens": 997632
+      },
+      "pointer_sources": [
+        "best_eligible",
+        "best_validation"
+      ],
+      "preferred": false,
+      "sft_validation": {
+        "batches": 47,
+        "duration_seconds": 1.888865868000039,
+        "loss": 2.8251035202936783,
+        "perplexity": 16.862690526413548,
+        "response_token_accuracy": 0.4674352927475471,
+        "samples": 369,
+        "tokens": 68694
+      }
+    },
+    {
+      "checkpoint": "checkpoint_00000588",
+      "checkpoint_identity": {
+        "checkpoint_manifest_sha256": "87200c551c89b418e5266ef1fd2e94b62557fb8cb20f2f02c5a97375285f3253",
+        "checkpoint_name": "checkpoint_00000588",
+        "model_sha256": "231c0376ee4cd3b58216605c7ab24e1d76aae80404257b298e589f0695dd10d4",
+        "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+      },
+      "general_perplexity_degradation_fraction": 0.08772585476097938,
+      "general_retention_validation": {
+        "batches": 228,
+        "duration_seconds": 4.3837697459999845,
+        "loss": 3.433074451031462,
+        "perplexity": 30.971717552350224,
+        "samples": 1822,
+        "tokens": 466432
+      },
+      "hard_band_eligible": true,
+      "improves_sft_baseline": true,
+      "medical_perplexity_degradation_fraction": 0.13489065748149232,
+      "medical_retention_validation": {
+        "batches": 488,
+        "duration_seconds": 9.306373679999979,
+        "loss": 3.2621880451908916,
+        "perplexity": 26.106597109115988,
+        "samples": 3897,
+        "tokens": 997632
+      },
+      "pointer_sources": [
+        "final_stage_c_sft",
+        "latest"
+      ],
+      "preferred": false,
+      "sft_validation": {
+        "batches": 47,
+        "duration_seconds": 1.9803152829999817,
+        "loss": 2.8244974418620368,
+        "perplexity": 16.852473509855482,
+        "response_token_accuracy": 0.46759542318106384,
+        "samples": 369,
+        "tokens": 68694
+      }
+    }
+  ],
+  "generated_at": "2026-07-22T20:35:31.949353+00:00",
+  "preferred_general_degradation_fraction": 0.1,
+  "preferred_medical_degradation_fraction": 0.1,
+  "selected_candidate": {
+    "checkpoint": "checkpoint_00000125",
+    "checkpoint_identity": {
+      "checkpoint_manifest_sha256": "0cf0080de0b74f2a5406e2e47f83b58b92a9f01442fa9abd15a085f12a04fa8f",
+      "checkpoint_name": "checkpoint_00000125",
+      "model_sha256": "275939cf7bb544aecb461f98956da2791b820757beae818ce4e7590029a08f39",
+      "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+    },
+    "general_perplexity_degradation_fraction": 0.05868189699065196,
+    "general_retention_validation": {
+      "batches": 228,
+      "duration_seconds": 4.326722371999949,
+      "loss": 3.406009947014441,
+      "perplexity": 30.14472493033276,
+      "samples": 1822,
+      "tokens": 466432
+    },
+    "hard_band_eligible": true,
+    "improves_sft_baseline": true,
+    "medical_perplexity_degradation_fraction": 0.09913760381664849,
+    "medical_retention_validation": {
+      "batches": 488,
+      "duration_seconds": 8.798275957999977,
+      "loss": 3.230177611706949,
+      "perplexity": 25.284147332747196,
+      "samples": 3897,
+      "tokens": 997632
+    },
+    "pointer_sources": [
+      "best_preferred"
+    ],
+    "preferred": true,
+    "sft_validation": {
+      "batches": 47,
+      "duration_seconds": 2.9894153699999606,
+      "loss": 3.0790578928403876,
+      "perplexity": 21.73791330249428,
+      "response_token_accuracy": 0.42964451043759283,
+      "samples": 369,
+      "tokens": 68694
+    }
+  },
+  "selected_checkpoint": "checkpoint_00000125",
+  "selection_rule": "Lowest response-only SFT validation loss among independently re-evaluated checkpoints inside both preferred retention bands.",
+  "selection_uses_test_data": false,
+  "stage": "supervised_instruction_finetuning_stage_c_v1"
+}

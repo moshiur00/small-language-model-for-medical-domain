@@ -107,3 +107,8 @@ artifacts/exports/stage-c-sft-data.tar
 artifacts/exports/stage-c-sft-data.tar.sha256
 artifacts/exports/stage-c-sealed-test.tar
 artifacts/exports/stage-c-sealed-test.tar.sha256
+stage_c_preservation.tar
+stage_c_preservation.tar.sha256
+
+# Local verified checkpoint-preservation bundles (too large/restricted for Git)
+artifacts/preserved/

@@ -1,0 +1,98 @@
+{
+  "limitations": [
+    "Not validated for clinical use.",
+    "Loss and token accuracy do not establish medical factuality.",
+    "May produce incorrect, unsafe, or fabricated medical information."
+  ],
+  "primary_profile": "medical_instruction_specialist",
+  "profiles": {
+    "balanced_retention": {
+      "checkpoint": "checkpoint_00000125",
+      "checkpoint_identity": {
+        "checkpoint_manifest_sha256": "0cf0080de0b74f2a5406e2e47f83b58b92a9f01442fa9abd15a085f12a04fa8f",
+        "checkpoint_name": "checkpoint_00000125",
+        "model_sha256": "275939cf7bb544aecb461f98956da2791b820757beae818ce4e7590029a08f39",
+        "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+      },
+      "role": "preferred-band balanced instruction model",
+      "sealed_test": {
+        "general_language_model": {
+          "batches": 149,
+          "duration_seconds": 2.9064192110000704,
+          "loss": 3.7524486905958048,
+          "perplexity": 42.625330557821016,
+          "samples": 1185,
+          "tokens": 303360
+        },
+        "medical_language_model": {
+          "batches": 491,
+          "duration_seconds": 8.643151273999933,
+          "loss": 3.2543894608304145,
+          "perplexity": 25.90379442395532,
+          "samples": 3926,
+          "tokens": 1005056
+        },
+        "sft": {
+          "batches": 44,
+          "duration_seconds": 2.5485352729999704,
+          "loss": 3.120166826351629,
+          "perplexity": 22.650157971222452,
+          "response_token_accuracy": 0.4278768703830022,
+          "samples": 350,
+          "tokens": 68903
+        }
+      }
+    },
+    "medical_instruction_specialist": {
+      "checkpoint": "checkpoint_00000588",
+      "checkpoint_identity": {
+        "checkpoint_manifest_sha256": "87200c551c89b418e5266ef1fd2e94b62557fb8cb20f2f02c5a97375285f3253",
+        "checkpoint_name": "checkpoint_00000588",
+        "model_sha256": "231c0376ee4cd3b58216605c7ab24e1d76aae80404257b298e589f0695dd10d4",
+        "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+      },
+      "role": "three-epoch specialist inside hard retention bands",
+      "sealed_test": {
+        "general_language_model": {
+          "batches": 149,
+          "duration_seconds": 2.713862594000034,
+          "loss": 3.782875537835376,
+          "perplexity": 43.94221774638472,
+          "samples": 1185,
+          "tokens": 303360
+        },
+        "medical_language_model": {
+          "batches": 491,
+          "duration_seconds": 9.029959989999952,
+          "loss": 3.2856246446757718,
+          "perplexity": 26.72567315148817,
+          "samples": 3926,
+          "tokens": 1005056
+        },
+        "sft": {
+          "batches": 44,
+          "duration_seconds": 1.9640361210000492,
+          "loss": 2.879607662717509,
+          "perplexity": 17.807285346966626,
+          "response_token_accuracy": 0.46339056354585434,
+          "samples": 350,
+          "tokens": 68903
+        }
+      }
+    }
+  },
+  "promoted_at": "2026-07-22T20:30:40.173787+00:00",
+  "release_policy": {
+    "public_checkpoint_release_allowed": false,
+    "reason": "Stage C source-license review remains incomplete.",
+    "scope": "internal_research_only"
+  },
+  "selection": {
+    "profile_registration_sha256": "76a6a65f55fadd74b392bf1d1102f4d4335b8fb01dee00f6babfee491eb34346",
+    "test_evaluation_sha256": "1ed476499e4e3abb80b16115ff37bfe8b53d9b0fbde52606ca8da5e8fbdebb38",
+    "test_used_for_selection": false,
+    "validation_selected": true
+  },
+  "stage": "supervised_instruction_finetuning_stage_c_v1",
+  "status": "promoted_for_internal_research"
+}

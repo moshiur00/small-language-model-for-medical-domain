@@ -1,0 +1,290 @@
+{
+  "balanced_retention": {
+    "checkpoint": "checkpoint_00000125",
+    "checkpoint_identity": {
+      "checkpoint_manifest_sha256": "0cf0080de0b74f2a5406e2e47f83b58b92a9f01442fa9abd15a085f12a04fa8f",
+      "checkpoint_name": "checkpoint_00000125",
+      "model_sha256": "275939cf7bb544aecb461f98956da2791b820757beae818ce4e7590029a08f39",
+      "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+    },
+    "general_language_model_test": {
+      "batches": 149,
+      "duration_seconds": 2.9064192110000704,
+      "loss": 3.7524486905958048,
+      "perplexity": 42.625330557821016,
+      "samples": 1185,
+      "tokens": 303360
+    },
+    "medical_language_model_test": {
+      "batches": 491,
+      "duration_seconds": 8.643151273999933,
+      "loss": 3.2543894608304145,
+      "perplexity": 25.90379442395532,
+      "samples": 3926,
+      "tokens": 1005056
+    },
+    "profile": "balanced_retention",
+    "sft_test": {
+      "batches": 44,
+      "duration_seconds": 2.5485352729999704,
+      "loss": 3.120166826351629,
+      "perplexity": 22.650157971222452,
+      "response_token_accuracy": 0.4278768703830022,
+      "samples": 350,
+      "tokens": 68903
+    },
+    "sft_test_by_source": {
+      "alpaca": {
+        "batches": 7,
+        "duration_seconds": 0.2693788770000083,
+        "loss": 3.1418449288206647,
+        "perplexity": 23.1465311927868,
+        "response_token_accuracy": 0.4074631357207343,
+        "samples": 54,
+        "tokens": 3323
+      },
+      "chatdoctor": {
+        "batches": 6,
+        "duration_seconds": 0.28913608999994267,
+        "loss": 3.698119433283746,
+        "perplexity": 40.371311982489416,
+        "response_token_accuracy": 0.3524494231733824,
+        "samples": 41,
+        "tokens": 5981
+      },
+      "medalpaca": {
+        "batches": 6,
+        "duration_seconds": 0.23143370299999333,
+        "loss": 2.216006510867841,
+        "perplexity": 9.170634811549151,
+        "response_token_accuracy": 0.5574345883854499,
+        "samples": 48,
+        "tokens": 3134
+      },
+      "medinstruct": {
+        "batches": 6,
+        "duration_seconds": 0.3191858500000535,
+        "loss": 2.5077514556671217,
+        "perplexity": 12.277292963020175,
+        "response_token_accuracy": 0.49375967932950715,
+        "samples": 48,
+        "tokens": 10977
+      },
+      "medmcqa": {
+        "batches": 8,
+        "duration_seconds": 0.5555152420000695,
+        "loss": 3.682961235894038,
+        "perplexity": 39.763970397468164,
+        "response_token_accuracy": 0.38453646707703787,
+        "samples": 58,
+        "tokens": 10722
+      },
+      "openmedinstruct": {
+        "batches": 7,
+        "duration_seconds": 0.6109200930000043,
+        "loss": 3.101882970365039,
+        "perplexity": 22.239788742857666,
+        "response_token_accuracy": 0.4250275807722616,
+        "samples": 52,
+        "tokens": 31725
+      },
+      "pubmedqa": {
+        "batches": 7,
+        "duration_seconds": 0.35488224300002,
+        "loss": 3.3086849037497816,
+        "perplexity": 27.349135066693876,
+        "response_token_accuracy": 0.41006247944755014,
+        "samples": 49,
+        "tokens": 3041
+      }
+    }
+  },
+  "generated_at": "2026-07-22T18:04:14.295810+00:00",
+  "limitations": [
+    "Token loss and accuracy do not establish medical factuality.",
+    "This evaluation does not establish clinical safety.",
+    "Test results cannot change the pre-registered profile assignment."
+  ],
+  "medical_instruction_specialist": {
+    "checkpoint": "checkpoint_00000588",
+    "checkpoint_identity": {
+      "checkpoint_manifest_sha256": "87200c551c89b418e5266ef1fd2e94b62557fb8cb20f2f02c5a97375285f3253",
+      "checkpoint_name": "checkpoint_00000588",
+      "model_sha256": "231c0376ee4cd3b58216605c7ab24e1d76aae80404257b298e589f0695dd10d4",
+      "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+    },
+    "general_language_model_test": {
+      "batches": 149,
+      "duration_seconds": 2.713862594000034,
+      "loss": 3.782875537835376,
+      "perplexity": 43.94221774638472,
+      "samples": 1185,
+      "tokens": 303360
+    },
+    "medical_language_model_test": {
+      "batches": 491,
+      "duration_seconds": 9.029959989999952,
+      "loss": 3.2856246446757718,
+      "perplexity": 26.72567315148817,
+      "samples": 3926,
+      "tokens": 1005056
+    },
+    "profile": "medical_instruction_specialist",
+    "sft_test": {
+      "batches": 44,
+      "duration_seconds": 1.9640361210000492,
+      "loss": 2.879607662717509,
+      "perplexity": 17.807285346966626,
+      "response_token_accuracy": 0.46339056354585434,
+      "samples": 350,
+      "tokens": 68903
+    },
+    "sft_test_by_source": {
+      "alpaca": {
+        "batches": 7,
+        "duration_seconds": 0.19761331699999118,
+        "loss": 3.1236485834047087,
+        "perplexity": 22.729157767734367,
+        "response_token_accuracy": 0.41077339753235026,
+        "samples": 54,
+        "tokens": 3323
+      },
+      "chatdoctor": {
+        "batches": 6,
+        "duration_seconds": 0.25185625900007835,
+        "loss": 3.5089178863446304,
+        "perplexity": 33.41209253302396,
+        "response_token_accuracy": 0.3761912723624812,
+        "samples": 41,
+        "tokens": 5981
+      },
+      "medalpaca": {
+        "batches": 6,
+        "duration_seconds": 0.1673557390000724,
+        "loss": 2.021257550418187,
+        "perplexity": 7.547810720512193,
+        "response_token_accuracy": 0.5912571793235482,
+        "samples": 48,
+        "tokens": 3134
+      },
+      "medinstruct": {
+        "batches": 6,
+        "duration_seconds": 0.27998013399997035,
+        "loss": 2.3997329203843787,
+        "perplexity": 11.020232708045905,
+        "response_token_accuracy": 0.5092466065409492,
+        "samples": 48,
+        "tokens": 10977
+      },
+      "medmcqa": {
+        "batches": 8,
+        "duration_seconds": 0.5080970709999519,
+        "loss": 3.4438520219427864,
+        "perplexity": 31.307322690060584,
+        "response_token_accuracy": 0.41680656593919047,
+        "samples": 58,
+        "tokens": 10722
+      },
+      "openmedinstruct": {
+        "batches": 7,
+        "duration_seconds": 0.6008486220000577,
+        "loss": 2.7726491504170183,
+        "perplexity": 16.0009668800489,
+        "response_token_accuracy": 0.47483057525610717,
+        "samples": 52,
+        "tokens": 31725
+      },
+      "pubmedqa": {
+        "batches": 7,
+        "duration_seconds": 0.3555490869999858,
+        "loss": 3.118521643053423,
+        "perplexity": 22.612924945600408,
+        "response_token_accuracy": 0.44064452482735944,
+        "samples": 49,
+        "tokens": 3041
+      }
+    }
+  },
+  "profile_registration_sha256": "76a6a65f55fadd74b392bf1d1102f4d4335b8fb01dee00f6babfee491eb34346",
+  "registered_primary_profile": "medical_instruction_specialist",
+  "specialist_vs_balanced": {
+    "sft_loss_change": -0.24055916363412022,
+    "sft_perplexity_change_fraction": -0.21381186967476373,
+    "sft_response_token_accuracy_change": 0.035513693162852134
+  },
+  "specialist_vs_balanced_sft_test_by_source": {
+    "alpaca": {
+      "balanced_loss": 3.1418449288206647,
+      "balanced_response_token_accuracy": 0.4074631357207343,
+      "loss_change": -0.01819634541595594,
+      "perplexity_change_fraction": -0.01803179152747092,
+      "response_token_accuracy_change": 0.0033102618116159777,
+      "specialist_improves_loss": true,
+      "specialist_loss": 3.1236485834047087,
+      "specialist_response_token_accuracy": 0.41077339753235026
+    },
+    "chatdoctor": {
+      "balanced_loss": 3.698119433283746,
+      "balanced_response_token_accuracy": 0.3524494231733824,
+      "loss_change": -0.1892015469391155,
+      "perplexity_change_fraction": -0.1723803143302336,
+      "response_token_accuracy_change": 0.023741849189098774,
+      "specialist_improves_loss": true,
+      "specialist_loss": 3.5089178863446304,
+      "specialist_response_token_accuracy": 0.3761912723624812
+    },
+    "medalpaca": {
+      "balanced_loss": 2.216006510867841,
+      "balanced_response_token_accuracy": 0.5574345883854499,
+      "loss_change": -0.19474896044965417,
+      "perplexity_change_fraction": -0.17695875197137234,
+      "response_token_accuracy_change": 0.03382259093809825,
+      "specialist_improves_loss": true,
+      "specialist_loss": 2.021257550418187,
+      "specialist_response_token_accuracy": 0.5912571793235482
+    },
+    "medinstruct": {
+      "balanced_loss": 2.5077514556671217,
+      "balanced_response_token_accuracy": 0.49375967932950715,
+      "loss_change": -0.10801853528274297,
+      "perplexity_change_fraction": -0.1023890411966708,
+      "response_token_accuracy_change": 0.01548692721144207,
+      "specialist_improves_loss": true,
+      "specialist_loss": 2.3997329203843787,
+      "specialist_response_token_accuracy": 0.5092466065409492
+    },
+    "medmcqa": {
+      "balanced_loss": 3.682961235894038,
+      "balanced_response_token_accuracy": 0.38453646707703787,
+      "loss_change": -0.2391092139512514,
+      "perplexity_change_fraction": -0.21267110962204194,
+      "response_token_accuracy_change": 0.032270098862152596,
+      "specialist_improves_loss": true,
+      "specialist_loss": 3.4438520219427864,
+      "specialist_response_token_accuracy": 0.41680656593919047
+    },
+    "openmedinstruct": {
+      "balanced_loss": 3.101882970365039,
+      "balanced_response_token_accuracy": 0.4250275807722616,
+      "loss_change": -0.3292338199480205,
+      "perplexity_change_fraction": -0.28052523047514877,
+      "response_token_accuracy_change": 0.049802994483845564,
+      "specialist_improves_loss": true,
+      "specialist_loss": 2.7726491504170183,
+      "specialist_response_token_accuracy": 0.47483057525610717
+    },
+    "pubmedqa": {
+      "balanced_loss": 3.3086849037497816,
+      "balanced_response_token_accuracy": 0.41006247944755014,
+      "loss_change": -0.1901632606963588,
+      "perplexity_change_fraction": -0.17317586496039816,
+      "response_token_accuracy_change": 0.030582045379809297,
+      "specialist_improves_loss": true,
+      "specialist_loss": 3.118521643053423,
+      "specialist_response_token_accuracy": 0.44064452482735944
+    }
+  },
+  "stage": "supervised_instruction_finetuning_stage_c_v1",
+  "test_evaluated_once": true,
+  "test_used_for_profile_assignment": false
+}

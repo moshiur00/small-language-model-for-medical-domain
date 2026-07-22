@@ -1,0 +1,29 @@
+{
+  "pilots": [
+    {
+      "arm": "lr_1e5",
+      "checkpoint": "checkpoint_00000150",
+      "general_degradation": 0.042644852143145506,
+      "learning_rate": 1e-05,
+      "medical_degradation": 0.07544865280857027,
+      "pointer": "best_preferred",
+      "sft_loss": 3.1968490230876445,
+      "update": 150
+    },
+    {
+      "arm": "lr_2e5",
+      "checkpoint": "checkpoint_00000125",
+      "general_degradation": 0.058691169558577894,
+      "learning_rate": 2e-05,
+      "medical_degradation": 0.09913656882912814,
+      "pointer": "best_preferred",
+      "sft_loss": 3.079069749907843,
+      "update": 125
+    }
+  ],
+  "selected_arm": "lr_2e5",
+  "selected_checkpoint": "checkpoint_00000125",
+  "selected_learning_rate": 2e-05,
+  "selection_rule": "lowest response-only SFT validation loss inside preferred dual-retention band",
+  "selection_uses_test_data": false
+}

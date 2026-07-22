@@ -1,0 +1,53 @@
+{
+  "consumed_supervised_tokens": 0,
+  "device": "cuda",
+  "general_retention_validation": {
+    "batches": 228,
+    "duration_seconds": 4.162463706999915,
+    "loss": 3.3489853060749613,
+    "perplexity": 28.473826761391138,
+    "samples": 1822,
+    "tokens": 466432
+  },
+  "generated_at": "2026-07-22T15:05:03.572475+00:00",
+  "lineage": {
+    "data": {
+      "general_validation_manifest_sha256": "440cde59138604720d0afbceb14777515c8591b2ff71000dc158f427994f8ffd",
+      "medical_validation_manifest_sha256": "6537ac466894df9175009017198e7c9996e55705a9a9388130716f4e261a706d",
+      "sft_manifest_sha256": "50fbb9973eb8205a9d0e4e12767ad893e933370b1f0a9a0ab8fde12deb9c8934"
+    },
+    "objective": {
+      "gradient_normalization": "summed_loss_over_supervised_tokens",
+      "ignore_index": -100,
+      "test_split_used_for_selection": false,
+      "type": "response_only_masked_causal_language_modeling"
+    },
+    "parent": {
+      "checkpoint_manifest_sha256": "ea60b0d6b66ea3bd1987f9ff7bbdd75ba34bc0f05b7c21349ad6ef90615a9b71",
+      "checkpoint_name": "checkpoint_00008000",
+      "model_sha256": "799fe9c34648044d21bf73258cd55a46716167f89dcf64e2c0487e0382d65c14",
+      "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+    },
+    "stage": "supervised_instruction_finetuning_stage_c_v1"
+  },
+  "medical_retention_validation": {
+    "batches": 488,
+    "duration_seconds": 8.983092844999987,
+    "loss": 3.135651735918946,
+    "perplexity": 23.00362324512459,
+    "samples": 3897,
+    "tokens": 997632
+  },
+  "optimizer_updates": 0,
+  "precision": "fp16",
+  "sft_validation": {
+    "batches": 47,
+    "duration_seconds": 2.5465712600000643,
+    "loss": 4.026201729124129,
+    "perplexity": 56.04762238734408,
+    "response_token_accuracy": 0.3155297405886977,
+    "samples": 369,
+    "tokens": 68694
+  },
+  "status": "passed"
+}
