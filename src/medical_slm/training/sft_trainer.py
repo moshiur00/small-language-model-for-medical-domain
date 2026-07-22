@@ -263,6 +263,12 @@ class StageCSFTTrainer(StageATrainer):
             state.medical_validation_baseline_loss = medical.loss
         if state.general_validation_baseline_loss is None:
             state.general_validation_baseline_loss = general.loss
+        if state.sft_validation_baseline_loss is None:
+            if state.update != 0:
+                raise ValueError(
+                    "Stage C resume checkpoint lacks its zero-update SFT baseline."
+                )
+            state.sft_validation_baseline_loss = sft.loss
         previous_sft = state.best_sft_validation_loss
         is_best_sft = previous_sft is None or sft.loss < previous_sft
         if is_best_sft:
@@ -279,15 +285,18 @@ class StageCSFTTrainer(StageATrainer):
         general_degradation = math.exp(
             general.loss - state.general_validation_baseline_loss
         ) - 1.0
-        # Update zero establishes baselines; it is not a promotable trained
-        # candidate even though it initializes the best-loss accumulator.
-        improves_sft = previous_sft is not None and sft.loss < previous_sft
-        preferred = improves_sft and medical_degradation <= (
+        # Eligibility is independent of the unrestricted global best. This
+        # allows a later model to re-enter a retention band and improve the
+        # best eligible checkpoint after a temporary retention excursion.
+        improves_sft_baseline = (
+            state.update > 0 and sft.loss < state.sft_validation_baseline_loss
+        )
+        preferred = improves_sft_baseline and medical_degradation <= (
             config.preferred_medical_perplexity_degradation_fraction
         ) and general_degradation <= (
             config.preferred_general_perplexity_degradation_fraction
         )
-        eligible = improves_sft and medical_degradation <= (
+        eligible = improves_sft_baseline and medical_degradation <= (
             config.maximum_medical_perplexity_degradation_fraction
         ) and general_degradation <= (
             config.maximum_general_perplexity_degradation_fraction
@@ -323,6 +332,8 @@ class StageCSFTTrainer(StageATrainer):
         common = {
             "medical_perplexity_degradation_fraction": medical_degradation,
             "general_perplexity_degradation_fraction": general_degradation,
+            "sft_baseline_loss": state.sft_validation_baseline_loss,
+            "improves_sft_baseline": improves_sft_baseline,
             "preferred_retention": preferred,
             "promotion_eligible": eligible,
             "hard_retention_breach": hard_retention_breach,
