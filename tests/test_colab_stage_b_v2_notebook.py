@@ -17,7 +17,7 @@ def test_stage_b_v2_notebook_code_cells_compile() -> None:
     notebook = load_notebook()
     assert notebook["nbformat"] == 4
     cells = notebook["cells"]
-    assert len(cells) == 28
+    assert len(cells) == 32
     for index, cell in enumerate(cells):
         if cell["cell_type"] == "code":
             compile("".join(cell["source"]), f"cell_{index}", "exec")
@@ -34,8 +34,6 @@ def test_stage_b_v2_notebook_has_isolated_pilots_and_safe_selection() -> None:
         assert f"run_fresh_pilot('{arm}')" in code_text
     assert "best_preferred.json" in code_text
     assert "selection_uses_test_data': False" in code_text
-    assert "evaluation_medical/test" not in code_text
-    assert "datasets/tokenized/evaluation/test" not in code_text
     assert (
         "https://github.com/moshiur00/small-language-model-for-medical-domain.git"
         in code_text
@@ -43,6 +41,29 @@ def test_stage_b_v2_notebook_has_isolated_pilots_and_safe_selection() -> None:
     assert "github.com/moshiru00/" not in code_text
     assert "REPOSITORY_BRANCH = 'main'" in code_text
     assert "'--branch', REPOSITORY_BRANCH, '--single-branch'" in code_text
+
+
+def test_final_selection_is_validation_only_and_test_is_guarded() -> None:
+    cells = load_notebook()["cells"]
+    selection = next(
+        "".join(cell["source"])
+        for cell in cells
+        if cell["cell_type"] == "code"
+        and "VALIDATION-ONLY SELECTION: PASSED" in "".join(cell["source"])
+    )
+    sealed_test = next(
+        "".join(cell["source"])
+        for cell in cells
+        if cell["cell_type"] == "code"
+        and "STAGE B V2 TEST AND PROMOTION ARTIFACTS" in "".join(cell["source"])
+    )
+    assert "evaluation_medical/test" not in selection
+    assert "datasets/tokenized/evaluation/test" not in selection
+    assert "selection_uses_test_data': False" in selection
+    assert "stage_b_v2_test_evaluation_status.json" in sealed_test
+    assert "evaluation_medical/test" in sealed_test
+    assert "datasets/tokenized/evaluation/test" in sealed_test
+    assert "test_used_for_selection': False" in sealed_test
 
 
 def test_stage_b_v2_full_start_and_resume_cells_are_standalone() -> None:

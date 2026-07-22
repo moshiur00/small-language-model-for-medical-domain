@@ -458,6 +458,246 @@ cells = [
         'latest_general_validation_loss': state['latest_general_validation_loss'],
     })
     """),
+    markdown("""
+    # Validation-only final checkpoint selection
+
+    This gate independently evaluates the validation-selected checkpoint and
+    the 8,033-update endpoint. It does not open either test split.
+    """),
+    code("""
+    import json
+    import math
+    import os
+    from dataclasses import asdict
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    import torch
+    import yaml
+    from torch.utils.data import DataLoader
+
+    from medical_slm.data.tokenization.dataset import PackedTokenDataset
+    from medical_slm.data.tokenization.manifest import calculate_sha256
+    from medical_slm.model import DecoderConfig, DecoderModel
+    from medical_slm.training.checkpoint import load_model_weights, verify_checkpoint
+    from medical_slm.training.evaluation import evaluate_shifted_packed
+    from medical_slm.training.precision import resolve_precision
+
+    DRIVE_V2 = Path('/content/drive/MyDrive/medical-slm-runs/stage_b_v2')
+    CHECKPOINT_ROOT = DRIVE_V2 / 'full/checkpoints'
+    BASELINE_REPORT = json.loads((DRIVE_V2 / 'stage_b_v2_baseline.json').read_text())
+    MEDICAL_BASELINE = BASELINE_REPORT['medical_validation']['loss']
+    GENERAL_BASELINE = BASELINE_REPORT['general_validation']['loss']
+    PREFERRED_LIMIT = 0.20
+    HARD_LIMIT = 0.25
+
+    device = torch.device('cuda')
+    assert torch.cuda.is_available()
+    precision = resolve_precision('auto', device)
+    model_values = yaml.safe_load(Path('configs/model_stage_a.yaml').read_text())
+    model_config = DecoderConfig.from_mapping(model_values)
+    tokenizer_hash = calculate_sha256(Path('artifacts/tokenizer/tokenizer.json'))
+
+    def packed_loader(path):
+        return DataLoader(
+            PackedTokenDataset(path), batch_size=32, shuffle=False,
+            num_workers=2, pin_memory=True,
+        )
+
+    def pointer_checkpoint(pointer_name):
+        pointer = json.loads((CHECKPOINT_ROOT / f'{pointer_name}.json').read_text())
+        checkpoint = CHECKPOINT_ROOT / pointer['checkpoint']
+        verify_checkpoint(checkpoint)
+        return checkpoint
+
+    def evaluate_validation(checkpoint):
+        model = DecoderModel(model_config).to(device)
+        identity = load_model_weights(
+            checkpoint_directory=checkpoint,
+            model=model,
+            expected_model_config=model_config.to_dict(),
+            expected_tokenizer_sha256=tokenizer_hash,
+            map_location=device,
+        )
+        medical = evaluate_shifted_packed(
+            model=model,
+            batches=packed_loader('datasets/tokenized/evaluation_medical/validation'),
+            device=device,
+            precision=precision,
+        )
+        general = evaluate_shifted_packed(
+            model=model,
+            batches=packed_loader('datasets/tokenized/evaluation/validation'),
+            device=device,
+            precision=precision,
+        )
+        del model
+        torch.cuda.empty_cache()
+        degradation = math.exp(general.loss - GENERAL_BASELINE) - 1.0
+        return {
+            'checkpoint': checkpoint.name,
+            'checkpoint_identity': identity,
+            'medical_validation': asdict(medical),
+            'general_validation': asdict(general),
+            'general_perplexity_degradation_fraction': degradation,
+            'medical_improved': medical.loss < MEDICAL_BASELINE,
+            'preferred_retention': degradation <= PREFERRED_LIMIT,
+            'promotion_eligible': degradation <= HARD_LIMIT,
+        }
+
+    candidate_paths = {
+        pointer_checkpoint('best_preferred'),
+        pointer_checkpoint('final_stage_b_v2'),
+    }
+    validation_candidates = [
+        evaluate_validation(checkpoint)
+        for checkpoint in sorted(candidate_paths, key=lambda path: path.name)
+    ]
+    preferred = [
+        result for result in validation_candidates
+        if result['medical_improved'] and result['preferred_retention']
+    ]
+    eligible = [
+        result for result in validation_candidates
+        if result['medical_improved'] and result['promotion_eligible']
+    ]
+    selectable = preferred or eligible
+    assert selectable, 'No validation candidate satisfies the promotion gate.'
+    selected = min(
+        selectable,
+        key=lambda result: result['medical_validation']['loss'],
+    )
+
+    selection_report = {
+        'stage': 'continual_medical_stage_b_v2',
+        'generated_at': datetime.now(timezone.utc).isoformat(),
+        'selection_uses_test_data': False,
+        'selection_rule': (
+            'Lowest medical-validation loss inside the preferred general-'
+            'perplexity retention band; hard-cap fallback only if needed.'
+        ),
+        'medical_baseline_loss': MEDICAL_BASELINE,
+        'general_baseline_loss': GENERAL_BASELINE,
+        'preferred_degradation_fraction': PREFERRED_LIMIT,
+        'hard_degradation_fraction': HARD_LIMIT,
+        'selected_checkpoint': selected['checkpoint'],
+        'selected_from_preferred_band': bool(preferred),
+        'candidates': validation_candidates,
+    }
+
+    def atomic_json(path, payload):
+        temporary = path.with_suffix(path.suffix + '.tmp')
+        temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + '\\n')
+        os.replace(temporary, path)
+
+    validation_report_path = DRIVE_V2 / 'stage_b_v2_candidate_validation.json'
+    atomic_json(validation_report_path, selection_report)
+    print(json.dumps(selection_report, indent=2))
+    print('VALIDATION-ONLY SELECTION: PASSED')
+    """),
+    markdown("""
+    # One-time sealed medical and general test evaluation
+
+    Run only after the validation-only report is reviewed. A durable sentinel
+    prevents accidental repeated test evaluation. Test results never influence
+    checkpoint selection.
+    """),
+    code("""
+    validation_report_path = DRIVE_V2 / 'stage_b_v2_candidate_validation.json'
+    evaluation_report_path = DRIVE_V2 / 'stage_b_v2_evaluation.json'
+    promotion_path = DRIVE_V2 / 'promoted_stage_b_v2.json'
+    test_sentinel_path = DRIVE_V2 / 'stage_b_v2_test_evaluation_status.json'
+
+    if evaluation_report_path.is_file():
+        raise RuntimeError(
+            f'Test evaluation already completed: {evaluation_report_path}'
+        )
+    if test_sentinel_path.is_file():
+        raise RuntimeError(
+            'A test-evaluation attempt is already recorded. Audit it before rerunning.'
+        )
+
+    validation_report = json.loads(validation_report_path.read_text())
+    selected_checkpoint = (
+        CHECKPOINT_ROOT / validation_report['selected_checkpoint']
+    )
+    verify_checkpoint(selected_checkpoint)
+    atomic_json(test_sentinel_path, {
+        'status': 'started',
+        'generated_at': datetime.now(timezone.utc).isoformat(),
+        'checkpoint': selected_checkpoint.name,
+    })
+
+    model = DecoderModel(model_config).to(device)
+    selected_identity = load_model_weights(
+        checkpoint_directory=selected_checkpoint,
+        model=model,
+        expected_model_config=model_config.to_dict(),
+        expected_tokenizer_sha256=tokenizer_hash,
+        map_location=device,
+    )
+    medical_test = evaluate_shifted_packed(
+        model=model,
+        batches=packed_loader('datasets/tokenized/evaluation_medical/test'),
+        device=device,
+        precision=precision,
+    )
+    general_test = evaluate_shifted_packed(
+        model=model,
+        batches=packed_loader('datasets/tokenized/evaluation/test'),
+        device=device,
+        precision=precision,
+    )
+    assert medical_test.samples == 3_926 and medical_test.tokens == 1_005_056
+    assert general_test.samples == 1_185 and general_test.tokens == 303_360
+    assert math.isfinite(medical_test.loss) and math.isfinite(general_test.loss)
+
+    selected_validation = next(
+        candidate for candidate in validation_report['candidates']
+        if candidate['checkpoint'] == selected_checkpoint.name
+    )
+    evaluation_report = {
+        'stage': 'continual_medical_stage_b_v2',
+        'generated_at': datetime.now(timezone.utc).isoformat(),
+        'selected_checkpoint': selected_checkpoint.name,
+        'checkpoint_identity': selected_identity,
+        'selection_uses_test_data': False,
+        'validation_selection': validation_report,
+        'selected_candidate_validation': selected_validation,
+        'medical_test': asdict(medical_test),
+        'general_test': asdict(general_test),
+        'test_evaluated_once': True,
+        'limitations': [
+            'Loss and perplexity do not establish medical factuality.',
+            'The model has not been evaluated for clinical safety.',
+            'The checkpoint is a base model, not a medical assistant.',
+        ],
+    }
+    promotion = {
+        'stage': 'continual_medical_stage_b_v2',
+        'checkpoint': selected_checkpoint.name,
+        'checkpoint_root': str(CHECKPOINT_ROOT),
+        'evaluation_report': evaluation_report_path.name,
+        'validation_selected': True,
+        'test_used_for_selection': False,
+    }
+    atomic_json(evaluation_report_path, evaluation_report)
+    atomic_json(promotion_path, promotion)
+    atomic_json(test_sentinel_path, {
+        'status': 'completed',
+        'generated_at': datetime.now(timezone.utc).isoformat(),
+        'checkpoint': selected_checkpoint.name,
+        'evaluation_report': evaluation_report_path.name,
+    })
+    print({
+        'selected_checkpoint': selected_checkpoint.name,
+        'medical_test_loss': medical_test.loss,
+        'medical_test_perplexity': medical_test.perplexity,
+        'general_test_loss': general_test.loss,
+        'general_test_perplexity': general_test.perplexity,
+    })
+    print('STAGE B V2 TEST AND PROMOTION ARTIFACTS: WRITTEN')
+    """),
 ]
 
 
