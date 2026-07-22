@@ -17,7 +17,7 @@ def test_stage_b_v2_notebook_code_cells_compile() -> None:
     notebook = load_notebook()
     assert notebook["nbformat"] == 4
     cells = notebook["cells"]
-    assert len(cells) == 32
+    assert len(cells) == 34
     for index, cell in enumerate(cells):
         if cell["cell_type"] == "code":
             compile("".join(cell["source"]), f"cell_{index}", "exec")
@@ -83,3 +83,18 @@ def test_stage_b_v2_full_start_and_resume_cells_are_standalone() -> None:
     assert "--resume', 'latest'" not in fresh
     assert "--resume', 'latest'" in resume
     assert "drive_metrics" in resume
+
+
+def test_stage_b_v2_preservation_cell_exports_and_verifies_bundle() -> None:
+    cells = load_notebook()["cells"]
+    preservation = next(
+        "".join(cell["source"])
+        for cell in cells
+        if cell["cell_type"] == "code"
+        and "STAGE B V2 PHYSICAL PRESERVATION" in "".join(cell["source"])
+    )
+    assert "scripts/artifacts/export_stage_b_v2.py" in preservation
+    assert "scripts/artifacts/verify_preserved_run.py" in preservation
+    assert "stage_b_v2_preservation.tar" in preservation
+    assert "Refusing overwrite" in preservation
+    assert "os.replace(temporary, destination)" in preservation

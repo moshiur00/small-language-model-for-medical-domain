@@ -122,3 +122,41 @@ The final endpoint is not promoted automatically. The notebook independently
 re-evaluates both it and `best_preferred` on medical/general validation, selects
 without test data, and records that decision before the test datasets are
 opened. A durable status file prevents accidental repeated test evaluation.
+
+## Physical checkpoint preservation
+
+After promotion, run the notebook's physical-preservation cell. It exports the
+unique checkpoints referenced by `best_preferred`, `final_stage_b_v2`, and all
+available supporting pointers. For this run that means the promoted update
+8,000 checkpoint and chronological update 8,033 endpoint. The bundle also
+contains full metrics, reports, configs, tokenizer, dataset manifests, lineage,
+and a per-file SHA-256 inventory.
+
+The verified archive and checksum are copied atomically to:
+
+```text
+MyDrive/medical-slm-runs/stage_b_v2/preservation/
+├── stage_b_v2_preservation.tar
+└── stage_b_v2_preservation.tar.sha256
+```
+
+Download both files into the repository root. Verify the archive hash in
+PowerShell:
+
+```powershell
+$expected = (Get-Content stage_b_v2_preservation.tar.sha256).Split()[0]
+$actual = (Get-FileHash stage_b_v2_preservation.tar -Algorithm SHA256).Hash.ToLower()
+if ($actual -ne $expected.ToLower()) { throw "Archive SHA-256 mismatch" }
+```
+
+Then extract into the Git-ignored training-artifact directory and verify every
+file and checkpoint:
+
+```powershell
+tar -xf stage_b_v2_preservation.tar -C artifacts/training
+python scripts/artifacts/verify_preserved_run.py `
+  --root artifacts/training/stage_b_v2
+```
+
+Do not delete the Drive checkpoint directories until both the archive hash and
+the extracted preservation manifest pass locally.

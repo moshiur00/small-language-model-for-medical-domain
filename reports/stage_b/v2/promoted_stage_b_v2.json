@@ -1,0 +1,8 @@
+{
+  "checkpoint": "checkpoint_00008000",
+  "checkpoint_root": "/content/drive/MyDrive/medical-slm-runs/stage_b_v2/full/checkpoints",
+  "evaluation_report": "stage_b_v2_evaluation.json",
+  "stage": "continual_medical_stage_b_v2",
+  "test_used_for_selection": false,
+  "validation_selected": true
+}

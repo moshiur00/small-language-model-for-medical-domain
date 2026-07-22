@@ -1,7 +1,7 @@
 {
   "evaluation_contract": {
     "general_validation_manifest_sha256": "440cde59138604720d0afbceb14777515c8591b2ff71000dc158f427994f8ffd",
-    "medical_test_status": "sealed",
+    "medical_test_status": "evaluated_once_for_stage_b_v2",
     "medical_validation_manifest_sha256": "6537ac466894df9175009017198e7c9996e55705a9a9388130716f4e261a706d",
     "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
   },
@@ -40,12 +40,18 @@
       "training_tokens": 224120320
     },
     {
-      "artifact_path": "artifacts/training/stage_b_v2",
-      "checkpoint": null,
+      "artifact_path": "artifacts/training/stage_b_v2/checkpoints/checkpoint_00008000",
+      "checkpoint": "checkpoint_00008000",
+      "general_test_loss": 3.6919128343804823,
+      "general_validation_loss": 3.348985241725274,
       "id": "stage_b_v2",
+      "medical_test_loss": 3.1628958341919153,
+      "medical_validation_loss": 3.1356517410704954,
       "method": "retention_aware_full_continual_pretraining",
       "parent": "stage_a_parent",
-      "status": "planned"
+      "promotion_eligible": true,
+      "status": "complete_drive_checkpoint_pending_local_preservation",
+      "training_tokens": 262144000
     },
     {
       "artifact_path": "artifacts/training/stage_b_lora",
