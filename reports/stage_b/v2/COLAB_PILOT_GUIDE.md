@@ -68,6 +68,10 @@ the expected hash in the notebook is deliberately updated.
 9. Run the comparison cell. It selects validation checkpoints only and writes
    `pilot_selection.json` to Drive.
 10. Inspect the comparison report before running the standalone full-run cell.
+11. After the full run, execute the validation-only final selection cell. It
+    compares `best_preferred` with the unvalidated 8,033-update endpoint.
+12. Review `stage_b_v2_candidate_validation.json`, then run the one-time sealed
+    medical/general test cell exactly once.
 
 The notebook resolves precision automatically: T4 uses FP16 with a gradient
 scaler, while a BF16-capable GPU uses BF16 without a scaler.
@@ -78,6 +82,10 @@ scaler, while a BF16-capable GPU uses BF16 without a scaler.
 MyDrive/medical-slm-runs/stage_b_v2/
 ├── stage_b_v2_baseline.json
 ├── pilot_selection.json
+├── stage_b_v2_candidate_validation.json
+├── stage_b_v2_evaluation.json
+├── promoted_stage_b_v2.json
+├── stage_b_v2_test_evaluation_status.json
 ├── pilots/
 │   ├── control/
 │   ├── selective/
@@ -109,3 +117,8 @@ The selected full run starts again from Stage A and trains for at most 8,033
 updates. It does not continue the winning 500-update pilot. This preserves a
 clean, reproducible full-run schedule and prevents pilot-specific optimizer
 history from silently influencing the result.
+
+The final endpoint is not promoted automatically. The notebook independently
+re-evaluates both it and `best_preferred` on medical/general validation, selects
+without test data, and records that decision before the test datasets are
+opened. A durable status file prevents accidental repeated test evaluation.
