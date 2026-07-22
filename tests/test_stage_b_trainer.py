@@ -12,10 +12,10 @@ import torch
 from medical_slm.data.tokenization.manifest import calculate_sha256
 from medical_slm.model import DecoderConfig, DecoderModel
 from medical_slm.training.checkpoint import save_checkpoint, verify_checkpoint
-from medical_slm.training.config import StageBTrainingConfig
+from medical_slm.training.config import StageBTrainingConfig, StageBV2TrainingConfig
 from medical_slm.training.evaluation import EvaluationResult
 from medical_slm.training.state import TrainingState
-from medical_slm.training.trainer import StageBTrainer
+from medical_slm.training.trainer import StageBTrainer, StageBV2Trainer
 
 
 def write_split(
@@ -232,4 +232,138 @@ def test_stage_b_resume_restores_next_batch_and_dual_baselines(tmp_path: Path) -
     )
     assert final_state.general_validation_baseline_loss == (
         first_state.general_validation_baseline_loss
+    )
+
+
+def stage_b_v2_config(config: StageBTrainingConfig) -> StageBV2TrainingConfig:
+    values = config.to_dict()
+    values.update(
+        {
+            "frozen_layer_indices": [0],
+            "freeze_token_embeddings": True,
+            "l2_sp_strength": 1.0,
+            "preferred_general_perplexity_degradation_fraction": 0.20,
+            "maximum_general_perplexity_degradation_fraction": 0.25,
+            "emergency_general_perplexity_degradation_fraction": 0.35,
+            "emergency_validation_patience": 2,
+        }
+    )
+    return StageBV2TrainingConfig.from_mapping(values)
+
+
+def test_stage_b_v2_freezes_before_building_optimizer(tmp_path: Path) -> None:
+    config, model_config, _ = stage_b_setup(tmp_path)
+    trainer = StageBV2Trainer(stage_b_v2_config(config), model_config)
+    try:
+        optimizer_parameters = {
+            id(parameter)
+            for group in trainer.optimizer.param_groups
+            for parameter in group["params"]
+        }
+        assert not trainer.model.token_embeddings.weight.requires_grad
+        assert all(
+            not parameter.requires_grad
+            for parameter in trainer.model.layers[0].parameters()
+        )
+        assert all(
+            id(parameter) not in optimizer_parameters
+            for parameter in trainer.model.parameters()
+            if not parameter.requires_grad
+        )
+        assert trainer.checkpoint_lineage["stage"] == (
+            "continual_medical_stage_b_v2"
+        )
+    finally:
+        trainer.metric_logger.close()
+
+
+def test_stage_b_v2_uses_perplexity_retention_bands(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config, model_config, _ = stage_b_setup(tmp_path)
+    trainer = StageBV2Trainer(stage_b_v2_config(config), model_config)
+    evaluations = iter(
+        (
+            result(4.0),
+            result(3.0),
+            result(3.5),
+            result(3.0 + float(torch.log(torch.tensor(1.19)))),
+        )
+    )
+    monkeypatch.setattr(
+        "medical_slm.training.trainer.evaluate_shifted_packed",
+        lambda **_: next(evaluations),
+    )
+    try:
+        trainer.evaluate()
+        trainer.state.update = 1
+        trainer.evaluate()
+        assert trainer._last_is_best_preferred
+        assert trainer._last_is_best_eligible
+        assert trainer.state.best_preferred_medical_loss == 3.5
+    finally:
+        trainer.metric_logger.close()
+
+
+def test_stage_b_v2_stops_after_repeated_emergency_breaches(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config, model_config, _ = stage_b_setup(tmp_path)
+    trainer = StageBV2Trainer(stage_b_v2_config(config), model_config)
+    breach_loss = 3.0 + float(torch.log(torch.tensor(1.40)))
+    evaluations = iter(
+        (
+            result(4.0),
+            result(3.0),
+            result(3.8),
+            result(breach_loss),
+            result(3.7),
+            result(breach_loss),
+        )
+    )
+    monkeypatch.setattr(
+        "medical_slm.training.trainer.evaluate_shifted_packed",
+        lambda **_: next(evaluations),
+    )
+    try:
+        trainer.evaluate()
+        trainer.evaluate()
+        assert not trainer.stop_requested
+        trainer.evaluate()
+        assert trainer.stop_requested
+        assert trainer.state.consecutive_emergency_retention_breaches == 2
+    finally:
+        trainer.metric_logger.close()
+
+
+def test_stage_b_v2_checkpoint_resume_preserves_method_and_cursor(
+    tmp_path: Path,
+) -> None:
+    config, model_config, parent_parameters = stage_b_setup(tmp_path)
+    v2_config = stage_b_v2_config(config)
+    first = StageBV2Trainer(v2_config, model_config)
+    first_state = first.train()
+    assert first_state.update == 1
+    assert first_state.batch_cursor == 2
+
+    values = v2_config.to_dict()
+    values["max_updates"] = 2
+    resumed = StageBV2Trainer(
+        StageBV2TrainingConfig.from_mapping(values),
+        model_config,
+    )
+    resumed.resume("latest")
+    final_state = resumed.train()
+    assert final_state.update == 2
+    assert final_state.epoch == 1
+    assert final_state.batch_cursor == 0
+    assert final_state.consumed_tokens == 32
+    assert resumed.checkpoint_lineage["adaptation"]["method"] == (
+        "selective_freezing_l2_sp"
+    )
+    torch.testing.assert_close(
+        resumed.model.token_embeddings.weight,
+        parent_parameters[0],
     )

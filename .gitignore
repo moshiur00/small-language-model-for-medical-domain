@@ -97,3 +97,7 @@ stage-b-data.tar
 artifacts/training/
 artifacts/tokenizer/
 datasets/tokenized/
+stage_b_v1.tar
+stage_b_v1.tar.sha256
+stage-b-v2-data.tar
+stage-b-v2-data.tar.sha256

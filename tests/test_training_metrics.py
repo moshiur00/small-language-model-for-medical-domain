@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from medical_slm.training.metrics import JsonlMetricLogger
+from medical_slm.training.metrics import JsonlMetricLogger, mirror_metric_log
 
 
 def read_records(path: Path) -> list[dict[str, object]]:
@@ -42,3 +42,15 @@ def test_metric_logger_close_is_idempotent(tmp_path: Path) -> None:
     logger = JsonlMetricLogger(tmp_path / "metrics.jsonl")
     logger.close()
     logger.close()
+
+
+def test_metric_log_mirror_atomically_replaces_previous_copy(tmp_path: Path) -> None:
+    source = tmp_path / "local" / "metrics.jsonl"
+    destination = tmp_path / "drive" / "metrics.jsonl"
+    source.parent.mkdir()
+    source.write_text('{"update": 1}\n', encoding="utf-8")
+    mirror_metric_log(source, destination)
+    source.write_text('{"update": 2}\n', encoding="utf-8")
+    mirror_metric_log(source, destination)
+    assert destination.read_bytes() == source.read_bytes()
+    assert not list(destination.parent.glob(".metrics.jsonl.tmp-*"))

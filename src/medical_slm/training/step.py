@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Mapping, Sequence
+from typing import Mapping, Protocol, Sequence
 
 import torch
 from torch import nn
@@ -26,6 +26,14 @@ class UpdateMetrics:
     micro_batches: int
     optimizer_stepped: bool
     non_finite: bool
+    regularization_loss: float = 0.0
+    total_loss: float = 0.0
+
+
+class ParameterRegularizer(Protocol):
+    """Differentiable penalty evaluated once per optimizer update."""
+
+    def penalty(self) -> torch.Tensor: ...
 
 
 def _move_batch(
@@ -53,6 +61,8 @@ def run_optimizer_update(
     state: TrainingState,
     max_gradient_norm: float = 1.0,
     scaler: torch.amp.GradScaler | None = None,
+    regularizer: ParameterRegularizer | None = None,
+    regularization_strength: float = 0.0,
 ) -> UpdateMetrics:
     """Accumulate micro-batches and attempt one safe optimizer update.
 
@@ -66,6 +76,10 @@ def run_optimizer_update(
         raise ValueError("max_gradient_norm must be greater than zero.")
     if precision.uses_grad_scaler != (scaler is not None):
         raise ValueError("Gradient scaler does not match the precision policy.")
+    if regularization_strength < 0:
+        raise ValueError("regularization_strength cannot be negative.")
+    if regularization_strength > 0 and regularizer is None:
+        raise ValueError("A regularizer is required when its strength is positive.")
 
     resolved_device = torch.device(device)
     token_counts = [int(batch["labels"].numel()) for batch in micro_batches]
@@ -89,6 +103,16 @@ def run_optimizer_update(
             scaled_loss.backward()
         else:
             scaler.scale(scaled_loss).backward()
+
+    regularization_loss = 0.0
+    if regularizer is not None and regularization_strength > 0:
+        penalty = regularizer.penalty()
+        regularization_loss = float(penalty.detach())
+        weighted_penalty = penalty * regularization_strength
+        if scaler is None:
+            weighted_penalty.backward()
+        else:
+            scaler.scale(weighted_penalty).backward()
 
     if scaler is not None:
         scaler.unscale_(optimizer)
@@ -131,4 +155,6 @@ def run_optimizer_update(
         micro_batches=len(micro_batches),
         optimizer_stepped=optimizer_stepped,
         non_finite=non_finite,
+        regularization_loss=regularization_loss,
+        total_loss=weighted_loss + regularization_strength * regularization_loss,
     )

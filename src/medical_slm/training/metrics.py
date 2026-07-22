@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import math
 import os
+import shutil
+import uuid
 from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
@@ -102,3 +104,19 @@ class JsonlMetricLogger:
 
     def __exit__(self, *args: object) -> None:
         self.close()
+
+
+def mirror_metric_log(source: str | Path, destination: str | Path) -> Path:
+    """Atomically mirror a flushed JSONL log to durable storage."""
+    source_path = Path(source)
+    destination_path = Path(destination)
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination_path.with_name(
+        f".{destination_path.name}.tmp-{uuid.uuid4().hex}"
+    )
+    try:
+        shutil.copy2(source_path, temporary)
+        os.replace(temporary, destination_path)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return destination_path

@@ -27,9 +27,17 @@ from medical_slm.training.checkpoint import (
     verify_checkpoint,
     write_checkpoint_pointer,
 )
-from medical_slm.training.config import StageATrainingConfig, StageBTrainingConfig
+from medical_slm.training.adaptation import (
+    ParentParameterAnchor,
+    apply_selective_freezing,
+)
+from medical_slm.training.config import (
+    StageATrainingConfig,
+    StageBTrainingConfig,
+    StageBV2TrainingConfig,
+)
 from medical_slm.training.evaluation import EvaluationResult, evaluate_shifted_packed
-from medical_slm.training.metrics import JsonlMetricLogger
+from medical_slm.training.metrics import JsonlMetricLogger, mirror_metric_log
 from medical_slm.training.optimizer import create_adamw
 from medical_slm.training.precision import create_grad_scaler, resolve_precision
 from medical_slm.training.sampler import DeterministicBatchSampler
@@ -162,6 +170,7 @@ class StageATrainer:
         self.state = TrainingState()
         self.checkpoint_lineage: dict[str, Any] | None = None
         self.final_pointer_name = "final_stage_a"
+        self.stop_requested = False
         self.output_directory = Path(training_config.output_directory)
         self.checkpoint_root = self.output_directory / "checkpoints"
         self.checkpoint_backup_root = (
@@ -280,17 +289,7 @@ class StageATrainer:
         try:
             while self.state.update < max_updates:
                 started_at = time.perf_counter()
-                metrics = run_optimizer_update(
-                    model=self.model,
-                    optimizer=self.optimizer,
-                    scheduler=self.scheduler,
-                    micro_batches=[batch],
-                    device=self.device,
-                    precision=self.precision,
-                    state=self.state,
-                    max_gradient_norm=self.training_config.max_gradient_norm,
-                    scaler=self.scaler,
-                )
+                metrics = self._run_optimizer_update([batch])
                 # The same diagnostic batch is intentionally reused, so this
                 # counter must not masquerade as a resumable dataset position.
                 self.state.batch_cursor = 0
@@ -305,6 +304,8 @@ class StageATrainer:
                         update=self.state.update,
                         metrics={
                             "loss": metrics.loss,
+                            "regularization_loss": metrics.regularization_loss,
+                            "total_loss": metrics.total_loss,
                             "token_accuracy": self._packed_token_accuracy(batch),
                             "gradient_norm": (
                                 metrics.gradient_norm
@@ -347,6 +348,11 @@ class StageATrainer:
             write_checkpoint_pointer(self.checkpoint_root, "best_validation", name)
         if self.checkpoint_backup_root is not None:
             mirror_checkpoint(destination, self.checkpoint_backup_root)
+            self.metric_logger.flush()
+            mirror_metric_log(
+                self.metric_logger.path,
+                self.checkpoint_backup_root.parent / "metrics.jsonl",
+            )
             write_checkpoint_pointer(self.checkpoint_backup_root, "latest", name)
             if is_best:
                 write_checkpoint_pointer(
@@ -356,6 +362,23 @@ class StageATrainer:
                 )
         self._prune_checkpoints()
         return destination
+
+    def _run_optimizer_update(
+        self,
+        micro_batches: list[dict[str, torch.Tensor]],
+    ):
+        """Run one update; adaptation trainers can extend its objective."""
+        return run_optimizer_update(
+            model=self.model,
+            optimizer=self.optimizer,
+            scheduler=self.scheduler,
+            micro_batches=micro_batches,
+            device=self.device,
+            precision=self.precision,
+            state=self.state,
+            max_gradient_norm=self.training_config.max_gradient_norm,
+            scaler=self.scaler,
+        )
 
     def _prune_checkpoints(self) -> None:
         config = self.training_config
@@ -378,10 +401,14 @@ class StageATrainer:
             while (
                 self.state.epoch < config.max_epochs
                 and self.state.update < config.max_updates
+                and not self.stop_requested
             ):
                 iterator = iter(self._loader())
                 epoch_exhausted = False
-                while self.state.update < config.max_updates:
+                while (
+                    self.state.update < config.max_updates
+                    and not self.stop_requested
+                ):
                     micro_batches = []
                     for _ in range(config.gradient_accumulation_steps):
                         try:
@@ -393,17 +420,7 @@ class StageATrainer:
                         break
 
                     started_at = time.perf_counter()
-                    metrics = run_optimizer_update(
-                        model=self.model,
-                        optimizer=self.optimizer,
-                        scheduler=self.scheduler,
-                        micro_batches=micro_batches,
-                        device=self.device,
-                        precision=self.precision,
-                        state=self.state,
-                        max_gradient_norm=config.max_gradient_norm,
-                        scaler=self.scaler,
-                    )
+                    metrics = self._run_optimizer_update(micro_batches)
                     duration = time.perf_counter() - started_at
                     if (
                         self.state.update % config.log_interval == 0
@@ -414,6 +431,8 @@ class StageATrainer:
                             update=self.state.update,
                             metrics={
                                 "loss": metrics.loss,
+                                "regularization_loss": metrics.regularization_loss,
+                                "total_loss": metrics.total_loss,
                                 "gradient_norm": (
                                     metrics.gradient_norm
                                     if math.isfinite(metrics.gradient_norm)
@@ -642,3 +661,201 @@ class StageBTrainer(StageATrainer):
         ):
             self.evaluate()
         return super().train()
+
+
+class StageBV2Trainer(StageBTrainer):
+    """Selective, L2-SP-anchored medical adaptation with perplexity retention."""
+
+    def __init__(
+        self,
+        training_config: StageBV2TrainingConfig,
+        model_config: DecoderConfig,
+    ) -> None:
+        super().__init__(training_config, model_config)
+        self.training_config = training_config
+        self.freezing_report = apply_selective_freezing(
+            self.model,
+            freeze_token_embeddings=training_config.freeze_token_embeddings,
+            frozen_layer_indices=training_config.frozen_layer_indices,
+        )
+        # The inherited optimizer is empty and was built before parent loading.
+        # Rebuild it after freezing so it contains trainable parameters only.
+        self.optimizer = create_adamw(
+            self.model,
+            learning_rate=training_config.learning_rate,
+            betas=(training_config.adam_beta1, training_config.adam_beta2),
+            weight_decay=training_config.weight_decay,
+            fused=self.device.type == "cuda",
+        )
+        self.scheduler = create_warmup_cosine_scheduler(
+            self.optimizer,
+            total_updates=training_config.total_updates,
+            warmup_updates=training_config.warmup_updates,
+            peak_learning_rate=training_config.learning_rate,
+            final_learning_rate=training_config.final_learning_rate,
+        )
+        self.parent_anchor = ParentParameterAnchor(self.model)
+        inherited_lineage = self.checkpoint_lineage
+        if inherited_lineage is None:  # pragma: no cover - parent enforces this
+            raise RuntimeError("Stage B v2 requires Stage A parent lineage.")
+        self.checkpoint_lineage = {
+            "stage": "continual_medical_stage_b_v2",
+            "parent": inherited_lineage["parent"],
+            "data": inherited_lineage["data"],
+            "adaptation": {
+                "method": "selective_freezing_l2_sp",
+                "freeze_token_embeddings": training_config.freeze_token_embeddings,
+                "frozen_layer_indices": list(training_config.frozen_layer_indices),
+                "l2_sp_strength": training_config.l2_sp_strength,
+                "total_parameters": self.freezing_report.total_parameters,
+                "trainable_parameters": self.freezing_report.trainable_parameters,
+                "frozen_parameters": self.freezing_report.frozen_parameters,
+                "retention_metric": "general_validation_perplexity",
+            },
+        }
+        self.final_pointer_name = "final_stage_b_v2"
+        self._last_is_best_preferred = False
+
+    def resume(self, checkpoint: str | Path = "latest") -> None:
+        """Restore v2 state and preserve an already-triggered safety stop."""
+        super().resume(checkpoint)
+        self.stop_requested = (
+            self.state.consecutive_emergency_retention_breaches
+            >= self.training_config.emergency_validation_patience
+        )
+
+    def _run_optimizer_update(
+        self,
+        micro_batches: list[dict[str, torch.Tensor]],
+    ):
+        return run_optimizer_update(
+            model=self.model,
+            optimizer=self.optimizer,
+            scheduler=self.scheduler,
+            micro_batches=micro_batches,
+            device=self.device,
+            precision=self.precision,
+            state=self.state,
+            max_gradient_norm=self.training_config.max_gradient_norm,
+            scaler=self.scaler,
+            regularizer=self.parent_anchor,
+            regularization_strength=self.training_config.l2_sp_strength,
+        )
+
+    def evaluate(self) -> EvaluationResult:
+        """Evaluate v2 using perplexity-relative retention gates."""
+        medical = evaluate_shifted_packed(
+            model=self.model,
+            batches=self._validation_loader(),
+            device=self.device,
+            precision=self.precision,
+        )
+        general = evaluate_shifted_packed(
+            model=self.model,
+            batches=self._general_validation_loader(),
+            device=self.device,
+            precision=self.precision,
+        )
+        self.last_general_evaluation = general
+        state = self.state
+        config = self.training_config
+
+        if state.medical_validation_baseline_loss is None:
+            state.medical_validation_baseline_loss = medical.loss
+        if state.general_validation_baseline_loss is None:
+            state.general_validation_baseline_loss = general.loss
+
+        is_best_medical = (
+            state.best_medical_validation_loss is None
+            or medical.loss < state.best_medical_validation_loss
+        )
+        if is_best_medical:
+            state.best_medical_validation_loss = medical.loss
+            state.best_validation_loss = medical.loss
+        state.latest_general_validation_loss = general.loss
+
+        perplexity_ratio = math.exp(
+            general.loss - state.general_validation_baseline_loss
+        )
+        degradation = perplexity_ratio - 1.0
+        improves_medical = medical.loss < state.medical_validation_baseline_loss
+        preferred = improves_medical and degradation <= (
+            config.preferred_general_perplexity_degradation_fraction
+        )
+        eligible = improves_medical and degradation <= (
+            config.maximum_general_perplexity_degradation_fraction
+        )
+        self._last_is_best_preferred = preferred and (
+            state.best_preferred_medical_loss is None
+            or medical.loss < state.best_preferred_medical_loss
+        )
+        if self._last_is_best_preferred:
+            state.best_preferred_medical_loss = medical.loss
+        self._last_is_best_eligible = eligible and (
+            state.best_eligible_medical_loss is None
+            or medical.loss < state.best_eligible_medical_loss
+        )
+        if self._last_is_best_eligible:
+            state.best_eligible_medical_loss = medical.loss
+
+        emergency_breach = degradation > (
+            config.emergency_general_perplexity_degradation_fraction
+        )
+        if emergency_breach:
+            state.consecutive_emergency_retention_breaches += 1
+        else:
+            state.consecutive_emergency_retention_breaches = 0
+        if state.consecutive_emergency_retention_breaches >= (
+            config.emergency_validation_patience
+        ):
+            self.stop_requested = True
+
+        common = {
+            "medical_baseline_loss": state.medical_validation_baseline_loss,
+            "general_baseline_loss": state.general_validation_baseline_loss,
+            "general_perplexity_ratio": perplexity_ratio,
+            "general_perplexity_degradation_fraction": degradation,
+            "preferred_retention": preferred,
+            "promotion_eligible": eligible,
+            "emergency_retention_breach": emergency_breach,
+            "consecutive_emergency_retention_breaches": (
+                state.consecutive_emergency_retention_breaches
+            ),
+            "early_stop_requested": self.stop_requested,
+        }
+        self.metric_logger.log(
+            "medical_validation",
+            update=state.update,
+            metrics={
+                "loss": medical.loss,
+                "perplexity": medical.perplexity,
+                "tokens": medical.tokens,
+                "samples": medical.samples,
+                "duration_seconds": medical.duration_seconds,
+                "is_best_medical": is_best_medical,
+                "is_best_preferred": self._last_is_best_preferred,
+                "is_best_eligible": self._last_is_best_eligible,
+                **common,
+            },
+        )
+        self.metric_logger.log(
+            "general_retention_validation",
+            update=state.update,
+            metrics={
+                "loss": general.loss,
+                "perplexity": general.perplexity,
+                "tokens": general.tokens,
+                "samples": general.samples,
+                "duration_seconds": general.duration_seconds,
+                **common,
+            },
+        )
+        return medical
+
+    def _save(self, *, is_best: bool = False) -> Path:
+        is_best_preferred = self._last_is_best_preferred
+        destination = super()._save(is_best=is_best)
+        if is_best_preferred:
+            self._write_stage_b_pointer("best_preferred", destination.name)
+        self._last_is_best_preferred = False
+        return destination

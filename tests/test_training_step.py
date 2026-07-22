@@ -13,6 +13,15 @@ from medical_slm.training.state import TrainingState
 from medical_slm.training.step import run_optimizer_update
 
 
+class QuadraticAnchor:
+    def __init__(self, parameter: nn.Parameter) -> None:
+        self.parameter = parameter
+        self.parent = parameter.detach().clone()
+
+    def penalty(self) -> torch.Tensor:
+        return (self.parameter - self.parent).square().mean()
+
+
 class TinyCausalModel(nn.Module):
     def __init__(self) -> None:
         super().__init__()
@@ -132,3 +141,44 @@ def test_scaler_must_match_precision_policy() -> None:
             state=TrainingState(),
             scaler=torch.amp.GradScaler("cpu"),
         )
+
+
+def test_regularization_is_reported_and_pulls_toward_parent() -> None:
+    torch.manual_seed(23)
+    regularized = TinyCausalModel()
+    unregularized = copy.deepcopy(regularized)
+    with torch.no_grad():
+        regularized.output.weight.add_(0.5)
+        unregularized.output.weight.add_(0.5)
+    parent = regularized.output.weight.detach().clone() - 0.5
+
+    regularized_anchor = QuadraticAnchor(regularized.output.weight)
+    regularized_anchor.parent.copy_(parent)
+    data = batch([[1, 2, 3]], [[2, 3, 4]])
+    regularized_metrics = run_optimizer_update(
+        model=regularized,
+        optimizer=torch.optim.SGD(regularized.parameters(), lr=0.1),
+        scheduler=None,
+        micro_batches=[data],
+        device="cpu",
+        precision=resolve_precision("fp32", "cpu"),
+        state=TrainingState(),
+        max_gradient_norm=100.0,
+        regularizer=regularized_anchor,
+        regularization_strength=10.0,
+    )
+    run_optimizer_update(
+        model=unregularized,
+        optimizer=torch.optim.SGD(unregularized.parameters(), lr=0.1),
+        scheduler=None,
+        micro_batches=[data],
+        device="cpu",
+        precision=resolve_precision("fp32", "cpu"),
+        state=TrainingState(),
+        max_gradient_norm=100.0,
+    )
+    assert regularized_metrics.regularization_loss > 0
+    assert regularized_metrics.total_loss > regularized_metrics.loss
+    regularized_distance = (regularized.output.weight - parent).square().sum()
+    unregularized_distance = (unregularized.output.weight - parent).square().sum()
+    assert regularized_distance < unregularized_distance

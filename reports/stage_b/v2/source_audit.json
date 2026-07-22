@@ -1,0 +1,64 @@
+{
+  "format_version": 1,
+  "generated_at": "2026-07-21T23:31:11.276890+00:00",
+  "rehearsal": {
+    "stage_a_replay_tokens_required": 0,
+    "unused_general_is_sufficient": true
+  },
+  "target": {
+    "additional_general_tokens_required": 39285107,
+    "existing_v1_general_tokens": 39999201,
+    "general_fraction": 0.30000000000000004,
+    "medical_fraction": 0.7,
+    "preserved_v1_medical_tokens": 184996718,
+    "target_general_tokens": 79284308
+  },
+  "unused_general": {
+    "document_id_sha256": "c4b209a778722903699611e40e6e757728e52e1b384079fc9a2727aeac11c5c0",
+    "documents": 20479,
+    "exact_tokens": 42235053,
+    "sources": {
+      "fineweb_edu": {
+        "available_documents": 181153,
+        "unused_document_id_sha256": "3ed97d77d53be8b8dfeb65d0436f91decebde0b9b0c3b86628beba6d512d2165",
+        "unused_documents": 16477,
+        "unused_exact_tokens": 17892554,
+        "used_documents": 164676
+      },
+      "project_gutenberg_public_domain": {
+        "available_documents": 380,
+        "unused_document_id_sha256": "eae36205ebe6ddec26c1cd434c9b134683527f2eb139ff0073cd10dd64bb82df",
+        "unused_documents": 111,
+        "unused_exact_tokens": 7395761,
+        "used_documents": 269
+      },
+      "tinystories": {
+        "available_documents": 10000,
+        "unused_document_id_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unused_documents": 0,
+        "unused_exact_tokens": 0,
+        "used_documents": 10000
+      },
+      "wikipedia": {
+        "available_documents": 9959,
+        "unused_document_id_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unused_documents": 0,
+        "unused_exact_tokens": 0,
+        "used_documents": 9959
+      },
+      "wikitext103": {
+        "available_documents": 9785,
+        "unused_document_id_sha256": "5a668eba2b7ef53b4d30eee1a2946101c37dc2faff0b6be13ac706f0a241e4dc",
+        "unused_documents": 3891,
+        "unused_exact_tokens": 16946738,
+        "used_documents": 5894
+      }
+    }
+  },
+  "used_document_ids": {
+    "combined": 412043,
+    "combined_sha256": "4f58dcd03d39544696c6c1941427f6125f7dc406eca61afc5ad8de5437a58262",
+    "stage_a": 193231,
+    "stage_b_v1": 218812
+  }
+}

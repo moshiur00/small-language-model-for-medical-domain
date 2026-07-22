@@ -1,0 +1,29 @@
+{
+  "corpus": {
+    "document_id_sha256": "294d931a2796fdaa8119726c0c0948658f35aacd053c8becca1bb81962727e3f",
+    "documents": 237958,
+    "exact_tokens": 264230631,
+    "general_fraction": 0.29986649428241346,
+    "general_tokens": 79233913,
+    "medical_fraction": 0.7001335057175866,
+    "medical_tokens": 184996718,
+    "path": "datasets\\processed\\corpora\\continual_medical_stage_b_v2_70_30\\train.jsonl",
+    "sha256": "b02ee905a86ead64df63afdc5c15723468210a3fb65d9759eb17a3e49a42d786",
+    "size_bytes": 1708161569
+  },
+  "format_version": 1,
+  "generated_at": "2026-07-21T23:46:34.642378+00:00",
+  "relationships": {
+    "evaluation_overlaps": {
+      "general_test": 0,
+      "general_validation": 0,
+      "medical_test": 0,
+      "medical_validation": 0
+    },
+    "new_v2_documents": 19146,
+    "stage_a_overlap": 0,
+    "v1_documents": 218812,
+    "v1_documents_retained": 218812
+  },
+  "status": "passed"
+}
