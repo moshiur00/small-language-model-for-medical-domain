@@ -1,6 +1,6 @@
 # Stage C v1 Supervised Instruction Fine-Tuning Plan
 
-**Status:** Dataset and experiment contract phase  
+**Status:** Training system implemented; execution gates pending
 **Method:** Full-parameter response-only supervised instruction fine-tuning  
 **Parent:** Stage B v2 `checkpoint_00008000`  
 **Selection:** Validation only, subject to medical and general retention gates
@@ -73,9 +73,10 @@ remain acceptable. Test data is prohibited from pilot selection.
 | Early-stopping patience | 3 validations |
 | Precision | Automatic; FP16 expected on T4 |
 
-With approximately 6,300 training examples, an effective batch of 32 produces about
-197 updates per epoch and at most about 591 updates over three epochs. Exact values
-will be derived from the corrected manifest.
+The corrected manifest contains 6,248 training examples. With micro-batch 4 and
+gradient accumulation 8, each epoch has 1,562 micro-batches and 196 optimizer
+updates (the final update consumes the partial accumulation). The locked three-epoch
+schedule therefore contains exactly 588 optimizer updates.
 
 ## Baselines and retention gates
 
@@ -119,9 +120,10 @@ Perplexity and generated examples do not establish factuality or clinical safety
 1. ~~Lock this plan and the dataset specification.~~ Complete.
 2. ~~Correct truncation, duplicate handling, grouped splitting, and manifests.~~ Complete.
 3. ~~Rebuild, verify, and audit `datasets/tokenized/sft_stage_c_v1`.~~ Complete for internal research.
-4. Implement token-summed SFT training and evaluation.
-5. Implement Stage C configuration, lineage, checkpoints, and exact resume.
-6. Add regression tests and a self-contained Colab notebook.
+4. ~~Implement token-summed SFT training and evaluation.~~ Complete.
+5. ~~Implement Stage C configuration, lineage, checkpoints, and exact resume.~~ Complete.
+6. ~~Add regression tests and a self-contained Colab notebook.~~ Complete; runtime
+   gates remain to be executed on Colab.
 7. Run the zero-update and one-batch gates.
 8. Run matched learning-rate pilots.
 9. Lock and execute the full run.

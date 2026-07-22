@@ -214,3 +214,77 @@ def load_stage_b_v2_config(path: str | Path) -> StageBV2TrainingConfig:
     if not isinstance(values, dict):
         raise TypeError("Stage B v2 training configuration root must be a mapping.")
     return StageBV2TrainingConfig.from_mapping(values)
+
+
+@dataclass(frozen=True)
+class StageCSFTTrainingConfig(StageATrainingConfig):
+    """Response-only instruction fine-tuning initialized from Stage B v2."""
+
+    train_directory: str = "datasets/tokenized/sft_stage_c_v1/train"
+    validation_directory: str = "datasets/tokenized/sft_stage_c_v1/validation"
+    medical_validation_directory: str = (
+        "datasets/tokenized/evaluation_medical/validation"
+    )
+    general_validation_directory: str = "datasets/tokenized/evaluation/validation"
+    output_directory: str = "artifacts/training/stage_c_sft_v1"
+    parent_checkpoint_directory: str = (
+        "artifacts/training/stage_b_v2/checkpoints/checkpoint_00008000"
+    )
+    micro_batch_size: int = 4
+    gradient_accumulation_steps: int = 8
+    evaluation_batch_size: int = 8
+    learning_rate: float = 1e-5
+    final_learning_rate: float = 1e-6
+    warmup_updates: int = 30
+    total_updates: int = 588
+    max_updates: int = 588
+    max_epochs: int = 3
+    weight_decay: float = 0.01
+    validation_interval: int = 25
+    checkpoint_interval: int = 50
+    milestone_interval: int = 100
+    preferred_general_perplexity_degradation_fraction: float = 0.10
+    maximum_general_perplexity_degradation_fraction: float = 0.15
+    preferred_medical_perplexity_degradation_fraction: float = 0.10
+    maximum_medical_perplexity_degradation_fraction: float = 0.15
+    early_stopping_patience: int = 3
+    retention_breach_patience: int = 2
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        for field_name in (
+            "medical_validation_directory",
+            "general_validation_directory",
+            "parent_checkpoint_directory",
+        ):
+            if not getattr(self, field_name):
+                raise ValueError(f"{field_name} cannot be empty.")
+        for domain in ("general", "medical"):
+            preferred = getattr(
+                self, f"preferred_{domain}_perplexity_degradation_fraction"
+            )
+            maximum = getattr(
+                self, f"maximum_{domain}_perplexity_degradation_fraction"
+            )
+            if not 0 <= preferred <= maximum:
+                raise ValueError(f"Stage C {domain} retention thresholds are invalid.")
+        if self.early_stopping_patience <= 0 or self.retention_breach_patience <= 0:
+            raise ValueError("Stage C stopping patience values must be positive.")
+
+    @classmethod
+    def from_mapping(cls, values: Mapping[str, Any]) -> StageCSFTTrainingConfig:
+        unknown = set(values) - set(cls.__dataclass_fields__)
+        if unknown:
+            raise ValueError(
+                "Unknown Stage C SFT training fields: "
+                f"{', '.join(sorted(unknown))}."
+            )
+        return cls(**dict(values))
+
+
+def load_stage_c_sft_config(path: str | Path) -> StageCSFTTrainingConfig:
+    """Load a Stage C SFT YAML configuration file."""
+    values = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(values, dict):
+        raise TypeError("Stage C SFT training configuration root must be a mapping.")
+    return StageCSFTTrainingConfig.from_mapping(values)

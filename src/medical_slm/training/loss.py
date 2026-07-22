@@ -46,13 +46,17 @@ def masked_sft_causal_loss(
     labels: torch.Tensor,
     *,
     ignore_index: int = -100,
+    reduction: str = "mean",
 ) -> torch.Tensor:
     """Calculate standard shifted causal loss for response-masked SFT labels."""
     _validate_logits_and_labels(logits, labels)
     if logits.shape[1] < 2:
         raise ValueError("SFT loss requires a sequence length of at least two.")
+    if reduction not in {"none", "mean", "sum"}:
+        raise ValueError("reduction must be one of: none, mean, sum.")
     return F.cross_entropy(
         logits[:, :-1].contiguous().view(-1, logits.shape[-1]),
         labels[:, 1:].contiguous().view(-1),
         ignore_index=ignore_index,
+        reduction=reduction,
     )

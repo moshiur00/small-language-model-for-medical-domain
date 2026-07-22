@@ -1,0 +1,67 @@
+"""Static safety checks for the Stage C Colab workflow."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+
+NOTEBOOK = Path("notebooks/colab_stage_c_sft.ipynb")
+
+
+def cells() -> list[dict[str, object]]:
+    notebook = json.loads(NOTEBOOK.read_text(encoding="utf-8"))
+    assert notebook["nbformat"] == 4
+    return notebook["cells"]
+
+
+def code_cells() -> list[str]:
+    return [
+        "".join(cell["source"])
+        for cell in cells()
+        if cell["cell_type"] == "code"
+    ]
+
+
+def test_stage_c_notebook_code_cells_compile() -> None:
+    for index, source in enumerate(code_cells()):
+        compile(source, f"stage_c_cell_{index}", "exec")
+
+
+def test_stage_c_notebook_contains_all_pretraining_gates_and_pilots() -> None:
+    source = "\n".join(code_cells())
+    assert "STAGE C INITIALIZATION GATE: PASSED" in source
+    assert "STAGE C BASELINE GATE: PASSED" in source
+    assert "ONE-BATCH ALIGNMENT GATE: PASSED" in source
+    assert "run_fresh_pilot('lr_1e5')" in source
+    assert "run_fresh_pilot('lr_2e5')" in source
+    assert "selection_uses_test_data': False" in source
+    assert "stage-c-sft-data.tar.sha256" not in source
+    assert "Path(str(DATA_ARCHIVE) + '.sha256')" in source
+
+
+def test_stage_c_selection_never_reads_sealed_test_data() -> None:
+    selection = next(
+        source
+        for source in code_cells()
+        if "selection_rule" in source and "selected_learning_rate" in source
+    )
+    assert "sft_stage_c_v1/test" not in selection
+    assert "evaluation_medical/test" not in selection
+    assert "datasets/tokenized/evaluation/test" not in selection
+
+
+def test_stage_c_full_start_and_resume_are_standalone() -> None:
+    notebook_cells = cells()
+    fresh = "".join(notebook_cells[21]["source"])
+    resume = "".join(notebook_cells[23]["source"])
+    for source in (fresh, resume):
+        assert "drive.mount('/content/drive')" in source
+        assert "git', 'clone'" in source
+        assert "pip', 'install'" in source
+        assert "stage-c-sft-data.tar" in source
+        assert "checkpoint_00008000" in source
+        assert "selected_learning_rate" in source
+    assert "--resume', 'latest'" not in fresh
+    assert "--resume', 'latest'" in resume
+    assert "drive_metrics" in resume

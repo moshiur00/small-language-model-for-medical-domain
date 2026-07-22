@@ -247,24 +247,69 @@ because 2,999 examples carry noncommercial or manual-review license metadata.
 
 ## Training system
 
+Stage C now has a dedicated response-only SFT path. It loads only model weights
+from the promoted Stage B v2 checkpoint, creates fresh optimizer/scheduler/scaler
+state, crops each fixed-width batch to its longest active sequence, and normalizes
+the accumulated gradient by the total number of supervised response tokens. Prompt
+and padding labels remain `-100`; the SFT loss performs exactly one standard causal
+shift. The trainer never loads the sealed SFT test split during training or
+selection.
+
+The Stage C runtime evaluates three validation distributions every 25 updates:
+response-only SFT validation, medical language-model retention, and general
+language-model retention. Preferred and hard perplexity bands are 10% and 15% for
+both retention distributions. Checkpoints preserve exact batch position, complete
+RNG state, parent/model/tokenizer/dataset identity, and FP16 scaler state. The
+canonical profile is 4 examples per micro-batch, 8-way accumulation, 3 epochs, and
+588 optimizer updates.
+
+Stage C entry points:
+
+```powershell
+# Verify parent loading and fresh optimization state
+python scripts/training/train_stage_c_sft.py --verify-initialization-only
+
+# Record the zero-update SFT/medical/general baselines
+python scripts/training/train_stage_c_sft.py --baseline-only
+
+# Confirm response-mask alignment on one repeated batch
+python scripts/training/train_stage_c_sft.py --overfit-one-batch --max-updates 10
+
+# Run or exactly resume training
+python scripts/training/train_stage_c_sft.py
+python scripts/training/train_stage_c_sft.py --resume latest
+```
+
+For Colab, create and upload the deterministic data bundle together with its
+generated SHA-256 sidecar:
+
+```powershell
+python scripts/artifacts/create_stage_c_data_archive.py
+```
+
+Then open [the Stage C Colab notebook](notebooks/colab_stage_c_sft.ipynb). It
+contains focused regression and initialization checks, the zero-update triple
+baseline, one-batch response-mask verification, matched `1e-5`/`2e-5` pilots,
+validation-only pilot selection, and standalone fresh/resume full-run cells.
+
 ### Optimization
 
-| Setting | Stage A | Stage B v2 |
-|---|---:|---:|
-| Initialization | Random | Stage A model weights |
-| Optimizer | AdamW | AdamW |
-| Peak learning rate | `3e-4` | `4e-5` |
-| Final learning rate | `3e-5` | `4e-6` |
-| Betas | `(0.9, 0.95)` | `(0.9, 0.95)` |
-| Weight decay | 0.1 | 0.05 |
-| Schedule | Linear warmup + cosine | Linear warmup + cosine |
-| Warmup updates | 73 | 161 |
-| Micro-batch | 16 sequences | 16 sequences |
-| Gradient accumulation | 8 | 8 |
-| Nominal global batch | 32,768 tokens | 32,768 tokens |
-| Gradient clipping | 1.0 | 1.0 |
-| Precision on completed T4 runs | FP16 + GradScaler | FP16 + GradScaler |
-| Epochs | 1 | 1 |
+| Setting | Stage A | Stage B v2 | Stage C SFT v1 |
+|---|---:|---:|---:|
+| Initialization | Random | Stage A weights | Stage B v2 weights |
+| Optimizer | AdamW | AdamW | AdamW |
+| Peak learning rate | `3e-4` | `4e-5` | `1e-5` baseline |
+| Final learning rate | `3e-5` | `4e-6` | `1e-6` |
+| Betas | `(0.9, 0.95)` | `(0.9, 0.95)` | `(0.9, 0.95)` |
+| Weight decay | 0.1 | 0.05 | 0.01 |
+| Schedule | Warmup + cosine | Warmup + cosine | Warmup + cosine |
+| Warmup updates | 73 | 161 | 30 |
+| Micro-batch | 16 sequences | 16 sequences | 4 examples |
+| Gradient accumulation | 8 | 8 | 8 |
+| Nominal global batch | 32,768 tokens | 32,768 tokens | 32 examples |
+| Gradient clipping | 1.0 | 1.0 | 1.0 |
+| Precision on T4 | FP16 + scaler | FP16 + scaler | FP16 + scaler |
+| Epochs | 1 | 1 | Up to 3 |
 
 BF16 is selected automatically on compatible hardware; FP16 uses a saved gradient
 scaler, and CPU execution falls back to FP32.
