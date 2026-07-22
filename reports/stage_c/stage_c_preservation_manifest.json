@@ -1,0 +1,217 @@
+{
+  "experiment": "stage_c_v1_supervised_instruction_finetuning",
+  "files": [
+    {
+      "path": "checkpoints/checkpoint_00000125/checkpoint_manifest.json",
+      "sha256": "0cf0080de0b74f2a5406e2e47f83b58b92a9f01442fa9abd15a085f12a04fa8f",
+      "size_bytes": 2699
+    },
+    {
+      "path": "checkpoints/checkpoint_00000125/config.json",
+      "sha256": "153000bbd0303ca79b7d6b57579ef30cf31ee9a3debc7cbbebb6ed527b19b078",
+      "size_bytes": 1918
+    },
+    {
+      "path": "checkpoints/checkpoint_00000125/environment.json",
+      "sha256": "b7738350a6b79409499943655d211b9dc0e3999416cb57424147d2099b7ef0fc",
+      "size_bytes": 257
+    },
+    {
+      "path": "checkpoints/checkpoint_00000125/metrics_tail.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "size_bytes": 3
+    },
+    {
+      "path": "checkpoints/checkpoint_00000125/model.pt",
+      "sha256": "275939cf7bb544aecb461f98956da2791b820757beae818ce4e7590029a08f39",
+      "size_bytes": 141874549
+    },
+    {
+      "path": "checkpoints/checkpoint_00000125/optimizer.pt",
+      "sha256": "73046af47a63412c02226238be5e521cbfa5865e4fa6fc9465a42eb2df25d75d",
+      "size_bytes": 283759883
+    },
+    {
+      "path": "checkpoints/checkpoint_00000125/rng_state.pt",
+      "sha256": "4cc3d1bd44c0ef129f8a009ffafd1a84be67578092bdedefa68d9e03e2d0169d",
+      "size_bytes": 14709
+    },
+    {
+      "path": "checkpoints/checkpoint_00000125/scaler.pt",
+      "sha256": "eb91409f6e91f963319fd0d44556f41f27633ebf23e20d40c7a5da1ccd610f15",
+      "size_bytes": 1383
+    },
+    {
+      "path": "checkpoints/checkpoint_00000125/scheduler.pt",
+      "sha256": "7cfca2679949c91fd749fd2f029aca60f0acc1e61805b3847008f2904bfd6d9c",
+      "size_bytes": 1465
+    },
+    {
+      "path": "checkpoints/checkpoint_00000125/trainer_state.json",
+      "sha256": "c847c71466cebc4e2d99400b4851f0ac5f263e63dae1deb99232868fc12c0a8d",
+      "size_bytes": 888
+    },
+    {
+      "path": "checkpoints/checkpoint_00000588/checkpoint_manifest.json",
+      "sha256": "87200c551c89b418e5266ef1fd2e94b62557fb8cb20f2f02c5a97375285f3253",
+      "size_bytes": 2699
+    },
+    {
+      "path": "checkpoints/checkpoint_00000588/config.json",
+      "sha256": "153000bbd0303ca79b7d6b57579ef30cf31ee9a3debc7cbbebb6ed527b19b078",
+      "size_bytes": 1918
+    },
+    {
+      "path": "checkpoints/checkpoint_00000588/environment.json",
+      "sha256": "b7738350a6b79409499943655d211b9dc0e3999416cb57424147d2099b7ef0fc",
+      "size_bytes": 257
+    },
+    {
+      "path": "checkpoints/checkpoint_00000588/metrics_tail.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "size_bytes": 3
+    },
+    {
+      "path": "checkpoints/checkpoint_00000588/model.pt",
+      "sha256": "231c0376ee4cd3b58216605c7ab24e1d76aae80404257b298e589f0695dd10d4",
+      "size_bytes": 141874549
+    },
+    {
+      "path": "checkpoints/checkpoint_00000588/optimizer.pt",
+      "sha256": "7bf93efe17e8687211e194cd4cbdd36d09e9eeceaed783fe96a06a20ceab1022",
+      "size_bytes": 283759883
+    },
+    {
+      "path": "checkpoints/checkpoint_00000588/rng_state.pt",
+      "sha256": "baa78decc657620a7ae1b2fe428f854b9ad6cc85d509d3881128b47d8009b1cc",
+      "size_bytes": 14709
+    },
+    {
+      "path": "checkpoints/checkpoint_00000588/scaler.pt",
+      "sha256": "fa8f9c79c40c52add04fc8f64e1f918436a34eb087c6b1500ed8db075d6f0e89",
+      "size_bytes": 1383
+    },
+    {
+      "path": "checkpoints/checkpoint_00000588/scheduler.pt",
+      "sha256": "19662cc9614710b0a00a16794b389fc2615ae13724345f0794d0cecd5ec515bf",
+      "size_bytes": 1465
+    },
+    {
+      "path": "checkpoints/checkpoint_00000588/trainer_state.json",
+      "sha256": "6cfb5a564fb2724381fee452210ed71c808c9969b0911c27a9d6f78d39b18cd4",
+      "size_bytes": 889
+    },
+    {
+      "path": "contracts/general_evaluation_manifest.json",
+      "sha256": "440cde59138604720d0afbceb14777515c8591b2ff71000dc158f427994f8ffd",
+      "size_bytes": 4233
+    },
+    {
+      "path": "contracts/medical_evaluation_manifest.json",
+      "sha256": "6537ac466894df9175009017198e7c9996e55705a9a9388130716f4e261a706d",
+      "size_bytes": 4291
+    },
+    {
+      "path": "contracts/model_config.yaml",
+      "sha256": "205bcda9deee5e32cc55bb3366b3887b7b907ccb74ebb8c1d469d92162814e83",
+      "size_bytes": 230
+    },
+    {
+      "path": "contracts/sft_data_config.yaml",
+      "sha256": "1dec9e8e77de49d08908b9040204bdf30034f40aea3136eaaaaae524900befaa",
+      "size_bytes": 435
+    },
+    {
+      "path": "contracts/sft_dataset_manifest.json",
+      "sha256": "50fbb9973eb8205a9d0e4e12767ad893e933370b1f0a9a0ab8fde12deb9c8934",
+      "size_bytes": 9536
+    },
+    {
+      "path": "contracts/stage_c_data_audit.json",
+      "sha256": "cf7a8d7f4e8f24abf8457d1662e1d86892d29183d08ac8f78de8bf0e4d51577b",
+      "size_bytes": 9565
+    },
+    {
+      "path": "contracts/tokenizer.json",
+      "sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e",
+      "size_bytes": 1110494
+    },
+    {
+      "path": "contracts/training_config.yaml",
+      "sha256": "5c6c80b0efd1f9dabfb9671c85fca3edcc992d77eed76229ec840c3f8dc46685",
+      "size_bytes": 1240
+    },
+    {
+      "path": "metrics.jsonl",
+      "sha256": "04e90548953c6941544321d6a5bfb57bd44a8451cff5c05f5f895a2fb4632b7f",
+      "size_bytes": 96613
+    },
+    {
+      "path": "reports/pilot_selection.json",
+      "sha256": "dcf4180c11b2ea60641269830f2c6905ed40faac0aa981351af01a38ad0caa22",
+      "size_bytes": 875
+    },
+    {
+      "path": "reports/promoted_stage_c.json",
+      "sha256": "137c24c75e82623a7e69969117adffd84d99a27103b7b8eaddf28edb4a3dae80",
+      "size_bytes": 3651
+    },
+    {
+      "path": "reports/stage_c_baseline.json",
+      "sha256": "5d700afa06c466bdde2a7aa4719cca81121f37d51faa154fcf8979070d3b0b0d",
+      "size_bytes": 1873
+    },
+    {
+      "path": "reports/stage_c_candidate_validation.json",
+      "sha256": "559389fe1d172dfb23bfc6b2832765df6f8945983d9b6bf7098548a27073cb11",
+      "size_bytes": 6522
+    },
+    {
+      "path": "reports/stage_c_profile_registration.json",
+      "sha256": "76a6a65f55fadd74b392bf1d1102f4d4335b8fb01dee00f6babfee491eb34346",
+      "size_bytes": 5204
+    },
+    {
+      "path": "reports/stage_c_source_validation.json",
+      "sha256": "97e441e53bc3375d51a946a79793b7be2e1de03c59953053574fd750f14356f4",
+      "size_bytes": 9026
+    },
+    {
+      "path": "reports/stage_c_test_evaluation.json",
+      "sha256": "1ed476499e4e3abb80b16115ff37bfe8b53d9b0fbde52606ca8da5e8fbdebb38",
+      "size_bytes": 10342
+    },
+    {
+      "path": "reports/stage_c_test_evaluation_status.json",
+      "sha256": "2ff4b6f9c653ec1f9f890df64751d9299e4cc03936d622bd4cd3943a419bbb32",
+      "size_bytes": 290
+    }
+  ],
+  "format_version": 1,
+  "generated_at": "2026-07-22T20:37:44.559783+00:00",
+  "pointers": {
+    "balanced_retention": "checkpoint_00000125",
+    "medical_instruction_specialist": "checkpoint_00000588"
+  },
+  "primary_profile": "medical_instruction_specialist",
+  "profiles": {
+    "balanced_retention": {
+      "checkpoint": "checkpoint_00000125",
+      "checkpoint_identity": {
+        "checkpoint_manifest_sha256": "0cf0080de0b74f2a5406e2e47f83b58b92a9f01442fa9abd15a085f12a04fa8f",
+        "checkpoint_name": "checkpoint_00000125",
+        "model_sha256": "275939cf7bb544aecb461f98956da2791b820757beae818ce4e7590029a08f39",
+        "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+      }
+    },
+    "medical_instruction_specialist": {
+      "checkpoint": "checkpoint_00000588",
+      "checkpoint_identity": {
+        "checkpoint_manifest_sha256": "87200c551c89b418e5266ef1fd2e94b62557fb8cb20f2f02c5a97375285f3253",
+        "checkpoint_name": "checkpoint_00000588",
+        "model_sha256": "231c0376ee4cd3b58216605c7ab24e1d76aae80404257b298e589f0695dd10d4",
+        "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+      }
+    }
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "primary_profile": "medical_instruction_specialist",
+  "profiles": {
+    "balanced_retention": {
+      "checkpoint": "checkpoint_00000125",
+      "checkpoint_identity": {
+        "checkpoint_manifest_sha256": "0cf0080de0b74f2a5406e2e47f83b58b92a9f01442fa9abd15a085f12a04fa8f",
+        "checkpoint_name": "checkpoint_00000125",
+        "model_sha256": "275939cf7bb544aecb461f98956da2791b820757beae818ce4e7590029a08f39",
+        "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+      },
+      "role": "preferred-band balanced instruction model",
+      "validation": {
+        "checkpoint": "checkpoint_00000125",
+        "checkpoint_identity": {
+          "checkpoint_manifest_sha256": "0cf0080de0b74f2a5406e2e47f83b58b92a9f01442fa9abd15a085f12a04fa8f",
+          "checkpoint_name": "checkpoint_00000125",
+          "model_sha256": "275939cf7bb544aecb461f98956da2791b820757beae818ce4e7590029a08f39",
+          "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+        },
+        "general_perplexity_degradation_fraction": 0.05868189699065196,
+        "general_retention_validation": {
+          "batches": 228,
+          "duration_seconds": 4.207199550000041,
+          "loss": 3.406009947014441,
+          "perplexity": 30.14472493033276,
+          "samples": 1822,
+          "tokens": 466432
+        },
+        "hard_band_eligible": true,
+        "improves_sft_baseline": true,
+        "medical_perplexity_degradation_fraction": 0.09913760381664849,
+        "medical_retention_validation": {
+          "batches": 488,
+          "duration_seconds": 8.813182202999997,
+          "loss": 3.230177611706949,
+          "perplexity": 25.284147332747196,
+          "samples": 3897,
+          "tokens": 997632
+        },
+        "pointer_sources": [
+          "best_preferred"
+        ],
+        "preferred": true,
+        "sft_validation": {
+          "batches": 47,
+          "duration_seconds": 2.752626164999981,
+          "loss": 3.0790578928403876,
+          "perplexity": 21.73791330249428,
+          "response_token_accuracy": 0.42964451043759283,
+          "samples": 369,
+          "tokens": 68694
+        }
+      }
+    },
+    "medical_instruction_specialist": {
+      "checkpoint": "checkpoint_00000588",
+      "checkpoint_identity": {
+        "checkpoint_manifest_sha256": "87200c551c89b418e5266ef1fd2e94b62557fb8cb20f2f02c5a97375285f3253",
+        "checkpoint_name": "checkpoint_00000588",
+        "model_sha256": "231c0376ee4cd3b58216605c7ab24e1d76aae80404257b298e589f0695dd10d4",
+        "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+      },
+      "role": "three-epoch specialist inside hard retention bands",
+      "validation": {
+        "checkpoint": "checkpoint_00000588",
+        "checkpoint_identity": {
+          "checkpoint_manifest_sha256": "87200c551c89b418e5266ef1fd2e94b62557fb8cb20f2f02c5a97375285f3253",
+          "checkpoint_name": "checkpoint_00000588",
+          "model_sha256": "231c0376ee4cd3b58216605c7ab24e1d76aae80404257b298e589f0695dd10d4",
+          "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+        },
+        "general_perplexity_degradation_fraction": 0.08772585476097938,
+        "general_retention_validation": {
+          "batches": 228,
+          "duration_seconds": 4.1145389730000375,
+          "loss": 3.433074451031462,
+          "perplexity": 30.971717552350224,
+          "samples": 1822,
+          "tokens": 466432
+        },
+        "hard_band_eligible": true,
+        "improves_sft_baseline": true,
+        "medical_perplexity_degradation_fraction": 0.13489065748149232,
+        "medical_retention_validation": {
+          "batches": 488,
+          "duration_seconds": 9.046540413999992,
+          "loss": 3.2621880451908916,
+          "perplexity": 26.106597109115988,
+          "samples": 3897,
+          "tokens": 997632
+        },
+        "pointer_sources": [
+          "final_stage_c_sft",
+          "latest"
+        ],
+        "preferred": false,
+        "sft_validation": {
+          "batches": 47,
+          "duration_seconds": 1.9212611269999798,
+          "loss": 2.8244974418620368,
+          "perplexity": 16.852473509855482,
+          "response_token_accuracy": 0.46759542318106384,
+          "samples": 369,
+          "tokens": 68694
+        }
+      }
+    }
+  },
+  "registered_at": "2026-07-22T18:03:18.854283+00:00",
+  "registration_uses_test_data": false,
+  "source_validation_summary": {
+    "sources": 7,
+    "specialist_improved_all_sources": true,
+    "specialist_improved_sources": [
+      "alpaca",
+      "chatdoctor",
+      "medalpaca",
+      "medinstruct",
+      "medmcqa",
+      "openmedinstruct",
+      "pubmedqa"
+    ],
+    "specialist_regressed_sources": []
+  },
+  "stage": "supervised_instruction_finetuning_stage_c_v1",
+  "status": "locked_before_test",
+  "test_protocol": {
+    "post_test_profile_switching_allowed": false,
+    "registered_profiles_evaluated_once": [
+      "balanced_retention",
+      "medical_instruction_specialist"
+    ],
+    "test_role": "final unbiased reporting and release gate only",
+    "test_used_for_profile_assignment": false
+  }
+}
