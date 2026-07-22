@@ -1,0 +1,48 @@
+{
+  "candidate_validation": {
+    "general": {
+      "batches": 57,
+      "duration_seconds": 3.9930887470000016,
+      "loss": 3.3300274743562572,
+      "perplexity": 27.939109301734284,
+      "samples": 1822,
+      "tokens": 466432
+    },
+    "general_baseline_loss": 3.19838276440017,
+    "general_loss_ceiling": 3.3583019026201786,
+    "medical": {
+      "batches": 122,
+      "duration_seconds": 9.040948276999188,
+      "loss": 3.374684920068472,
+      "perplexity": 29.215077246375543,
+      "samples": 3897,
+      "tokens": 997632
+    },
+    "medical_baseline_loss": 3.4675045480274385,
+    "validation_passed": true
+  },
+  "checkpoint_identity": {
+    "checkpoint_manifest_sha256": "0d7f7d768bbb2d1ea0a31e1bba9b052e3f4187230c072154c4c6e6217330ea04",
+    "checkpoint_name": "checkpoint_00000250",
+    "model_sha256": "d31da88084bdcc08bbdab02a80f3a69c53244b1053fbea2fbcc28873dbd5a2dd",
+    "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+  },
+  "generated_at": "2026-07-21T22:22:35.400748+00:00",
+  "limitations": [
+    "Loss and perplexity do not establish medical factuality.",
+    "The model has not been evaluated for clinical safety.",
+    "The checkpoint is a base model, not a medical assistant."
+  ],
+  "medical_test": {
+    "batches": 123,
+    "duration_seconds": 8.301150461998986,
+    "loss": 3.3954293786604297,
+    "perplexity": 29.827457999706436,
+    "samples": 3926,
+    "tokens": 1005056
+  },
+  "selected_checkpoint": "checkpoint_00000250",
+  "selection_rule": "Lowest medical-validation loss among checkpoints whose general-validation loss remained within 5% of the Stage A baseline.",
+  "stage": "continual_medical_stage_b",
+  "test_evaluated_once": true
+}

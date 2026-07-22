@@ -1,0 +1,38 @@
+{
+  "consumed_tokens": 0,
+  "data": {
+    "general_validation_manifest_sha256": "440cde59138604720d0afbceb14777515c8591b2ff71000dc158f427994f8ffd",
+    "medical_validation_manifest_sha256": "6537ac466894df9175009017198e7c9996e55705a9a9388130716f4e261a706d",
+    "train_manifest_sha256": "1d8b828604c8e6ff9cc6ea4d6cffe604f78367dd87e8c171d73dd5dcfd4170d1"
+  },
+  "device": "cuda",
+  "general_loss_limit": 3.3583019026201786,
+  "general_loss_max_degradation_fraction": 0.05,
+  "general_validation": {
+    "batches": 57,
+    "duration_seconds": 3.733485693000034,
+    "loss": 3.19838276440017,
+    "perplexity": 24.492887380448188,
+    "samples": 1822,
+    "tokens": 466432
+  },
+  "generated_at": "2026-07-21T19:46:23.261730+00:00",
+  "medical_validation": {
+    "batches": 122,
+    "duration_seconds": 8.62314153300008,
+    "loss": 3.4675045480274385,
+    "perplexity": 32.05664672650161,
+    "samples": 3897,
+    "tokens": 997632
+  },
+  "model_parameters": 35463680,
+  "optimizer_updates": 0,
+  "parent": {
+    "checkpoint_manifest_sha256": "a7e132692f31b505b7d7db9fa7e6d773d5c006904fa0d774edb1ba6c7f0408a4",
+    "checkpoint_name": "checkpoint_00007250",
+    "model_sha256": "2443cb5875c11e9c0c027ead53d4f9adab099e0cd4b19fd47fe08181b0640423",
+    "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+  },
+  "precision": "fp16",
+  "status": "passed"
+}

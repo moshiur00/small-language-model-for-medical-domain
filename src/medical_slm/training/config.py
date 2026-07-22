@@ -148,3 +148,69 @@ def load_stage_b_config(path: str | Path) -> StageBTrainingConfig:
     if not isinstance(values, dict):
         raise TypeError("Stage B training configuration root must be a mapping.")
     return StageBTrainingConfig.from_mapping(values)
+
+
+@dataclass(frozen=True)
+class StageBV2TrainingConfig(StageBTrainingConfig):
+    """Retention-aware continual-pretraining configuration for Stage B v2."""
+
+    train_directory: str = "datasets/tokenized/continual_medical_stage_b_v2/train"
+    output_directory: str = "artifacts/training/stage_b_v2"
+    learning_rate: float = 4e-5
+    final_learning_rate: float = 4e-6
+    warmup_updates: int = 161
+    total_updates: int = 8_033
+    max_updates: int = 8_033
+    checkpoint_interval: int = 100
+    validation_interval: int = 100
+    weight_decay: float = 0.05
+    freeze_token_embeddings: bool = True
+    frozen_layer_indices: tuple[int, ...] = (0, 1, 2)
+    l2_sp_strength: float = 0.0
+    preferred_general_perplexity_degradation_fraction: float = 0.20
+    maximum_general_perplexity_degradation_fraction: float = 0.25
+    emergency_general_perplexity_degradation_fraction: float = 0.35
+    emergency_validation_patience: int = 2
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.l2_sp_strength < 0:
+            raise ValueError("l2_sp_strength cannot be negative.")
+        thresholds = (
+            self.preferred_general_perplexity_degradation_fraction,
+            self.maximum_general_perplexity_degradation_fraction,
+            self.emergency_general_perplexity_degradation_fraction,
+        )
+        if not 0 <= thresholds[0] <= thresholds[1] <= thresholds[2]:
+            raise ValueError("General-perplexity retention thresholds are invalid.")
+        if self.emergency_validation_patience <= 0:
+            raise ValueError("emergency_validation_patience must be positive.")
+        if tuple(sorted(set(self.frozen_layer_indices))) != self.frozen_layer_indices:
+            raise ValueError("frozen_layer_indices must be sorted and unique.")
+        if any(index < 0 for index in self.frozen_layer_indices):
+            raise ValueError("frozen_layer_indices cannot contain negative values.")
+
+    @classmethod
+    def from_mapping(cls, values: Mapping[str, Any]) -> StageBV2TrainingConfig:
+        known_fields = set(cls.__dataclass_fields__)
+        unknown_fields = set(values) - known_fields
+        if unknown_fields:
+            raise ValueError(
+                "Unknown Stage B v2 training fields: "
+                f"{', '.join(sorted(unknown_fields))}."
+            )
+        converted = dict(values)
+        if "frozen_layer_indices" in converted:
+            converted["frozen_layer_indices"] = tuple(
+                converted["frozen_layer_indices"]
+            )
+        return cls(**converted)
+
+
+def load_stage_b_v2_config(path: str | Path) -> StageBV2TrainingConfig:
+    """Load a Stage B v2 YAML configuration file."""
+    config_path = Path(path)
+    values = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    if not isinstance(values, dict):
+        raise TypeError("Stage B v2 training configuration root must be a mapping.")
+    return StageBV2TrainingConfig.from_mapping(values)

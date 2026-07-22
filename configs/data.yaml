@@ -1121,6 +1121,12 @@ tokenized_datasets:
       train:
         input_path: datasets/processed/corpora/continual_medical_stage_b_225m/train.jsonl
 
+  continual_medical_stage_b_v2:
+    output_directory: datasets/tokenized/continual_medical_stage_b_v2
+    splits:
+      train:
+        input_path: datasets/processed/corpora/continual_medical_stage_b_v2_70_30/train.jsonl
+
   evaluation:
     output_directory: datasets/tokenized/evaluation
     splits:

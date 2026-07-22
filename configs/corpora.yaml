@@ -50,6 +50,20 @@ corpora:
       # Use unused FineWeb-Edu documents for the full 40M-token rehearsal share.
       fineweb_edu: {tokens: 40000000, domain: general}
 
+  # Stage B v2 retains the complete medical allocation from v1 and expands
+  # general rehearsal to 30% using only licensed documents unused by Stage A.
+  # The exact source audit is reports/stage_b/v2/source_audit.json.
+  continual_medical_stage_b_v2_70_30:
+    target_tokens: 264284308
+    exclude_phases: [stage_a_325m]
+    sources:
+      pmc_open_access: {tokens: 95000000, domain: medical}
+      pubmed_abstracts: {tokens: 65000000, domain: medical}
+      wikidoc: {tokens: 25000000, domain: medical}
+      fineweb_edu: {tokens: 57000000, domain: general}
+      wikitext103: {tokens: 15000000, domain: general}
+      project_gutenberg_public_domain: {tokens: 7284308, domain: general}
+
   sft_balanced:
     balance_by: examples
     sampling: capped_round_robin

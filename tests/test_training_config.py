@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from medical_slm.training.config import StageATrainingConfig, StageBTrainingConfig
+from medical_slm.training.config import (
+    StageATrainingConfig,
+    StageBTrainingConfig,
+    StageBV2TrainingConfig,
+)
 
 
 def test_default_global_tokens_per_update() -> None:
@@ -38,3 +42,23 @@ def test_stage_b_defaults_target_verified_dataset() -> None:
 def test_stage_b_rejects_negative_forgetting_budget() -> None:
     with pytest.raises(ValueError, match="degradation"):
         StageBTrainingConfig(general_loss_max_degradation_fraction=-0.01)
+
+
+def test_stage_b_v2_defaults_encode_retention_aware_adaptation() -> None:
+    config = StageBV2TrainingConfig()
+    assert config.train_directory.endswith("continual_medical_stage_b_v2/train")
+    assert config.frozen_layer_indices == (0, 1, 2)
+    assert config.learning_rate == 4e-5
+    assert config.maximum_general_perplexity_degradation_fraction == 0.25
+
+
+def test_stage_b_v2_converts_yaml_layer_list_and_rejects_bad_bands() -> None:
+    config = StageBV2TrainingConfig.from_mapping(
+        {"frozen_layer_indices": [0, 2]}
+    )
+    assert config.frozen_layer_indices == (0, 2)
+    with pytest.raises(ValueError, match="thresholds"):
+        StageBV2TrainingConfig(
+            preferred_general_perplexity_degradation_fraction=0.30,
+            maximum_general_perplexity_degradation_fraction=0.20,
+        )

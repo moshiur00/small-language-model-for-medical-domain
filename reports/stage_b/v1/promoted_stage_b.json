@@ -1,0 +1,7 @@
+{
+  "checkpoint": "checkpoint_00000250",
+  "evaluation_report": "stage_b_evaluation.json",
+  "medical_test_used_for_selection": false,
+  "stage": "continual_medical_stage_b",
+  "validation_selected": true
+}
