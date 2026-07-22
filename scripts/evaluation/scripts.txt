@@ -1,0 +1,6 @@
+python scripts/evaluation/check_stage_b_v2_model.py --prompt "The human heart pumps blood through" --prompt "Antibiotic resistance occurs when" --max-new-tokens 80 --temperature 0.8 --top-k 50 --top-p 0.95
+
+
+# Deterministic greedy inference:
+python scripts/evaluation/check_stage_b_v2_model.py --prompt "In medicine, hypertension is" --max-new-tokens 32 --temperature 0
+

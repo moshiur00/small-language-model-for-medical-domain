@@ -1,0 +1,118 @@
+{
+  "checkpoint": "checkpoint_00008000",
+  "checkpoint_identity": {
+    "checkpoint_manifest_sha256": "ea60b0d6b66ea3bd1987f9ff7bbdd75ba34bc0f05b7c21349ad6ef90615a9b71",
+    "checkpoint_name": "checkpoint_00008000",
+    "model_sha256": "799fe9c34648044d21bf73258cd55a46716167f89dcf64e2c0487e0382d65c14",
+    "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+  },
+  "checkpoint_path": "artifacts\\training\\stage_b_v2\\checkpoints\\checkpoint_00008000",
+  "checkpoint_verification": {
+    "artifacts_verified": 9,
+    "format_version": 1,
+    "lineage": {
+      "adaptation": {
+        "freeze_token_embeddings": false,
+        "frozen_layer_indices": [],
+        "frozen_parameters": 0,
+        "l2_sp_strength": 0.0,
+        "method": "selective_freezing_l2_sp",
+        "retention_metric": "general_validation_perplexity",
+        "total_parameters": 35463680,
+        "trainable_parameters": 35463680
+      },
+      "data": {
+        "general_validation_manifest_sha256": "440cde59138604720d0afbceb14777515c8591b2ff71000dc158f427994f8ffd",
+        "medical_validation_manifest_sha256": "6537ac466894df9175009017198e7c9996e55705a9a9388130716f4e261a706d",
+        "train_manifest_sha256": "d296dfb5358e3b182ea7ded1afa07fba41c23b3629ce20b5515036c6488da752"
+      },
+      "parent": {
+        "checkpoint_manifest_sha256": "a7e132692f31b505b7d7db9fa7e6d773d5c006904fa0d774edb1ba6c7f0408a4",
+        "checkpoint_name": "checkpoint_00007250",
+        "model_sha256": "2443cb5875c11e9c0c027ead53d4f9adab099e0cd4b19fd47fe08181b0640423",
+        "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+      },
+      "stage": "continual_medical_stage_b_v2"
+    }
+  },
+  "decoding": {
+    "eos_token_id": 3,
+    "max_new_tokens": 80,
+    "temperature": 0.8,
+    "top_k": 50,
+    "top_p": 0.95
+  },
+  "device": "cpu",
+  "forward_logits_shape": [
+    1,
+    8,
+    16000
+  ],
+  "generated_at": "2026-07-22T12:19:12.354403+00:00",
+  "generations": [
+    {
+      "continuation": " the blood.\n- Tendon: A piece of bone that begins a clotting procedure. The muscle is thin and thick and does not absorb the blood.\n- Bone: A bone in the body that controls the blood.\n- Bone: A bone that is the most common color.\n- Bone: A bone which may have a large, massless, or high",
+      "full_text": "The human heart pumps blood through the blood.\n- Tendon: A piece of bone that begins a clotting procedure. The muscle is thin and thick and does not absorb the blood.\n- Bone: A bone in the body that controls the blood.\n- Bone: A bone that is the most common color.\n- Bone: A bone which may have a large, massless, or high",
+      "generated_tokens": 80,
+      "prompt": "The human heart pumps blood through",
+      "prompt_tokens": 7,
+      "stopped_on_eos": false
+    },
+    {
+      "continuation": " the microorganisms are sensitive to environmental changes that affect bacteria.\nAvoiding this problem is not exactly what is happening on the planet, but it is the part that is already in the body.\nThe problem is, at least not completely understood.\nAvoiding a problem in the body is not so much.\nTreatment and cure\nWhen the bacteria can't be spread",
+      "full_text": "Antibiotic resistance occurs when the microorganisms are sensitive to environmental changes that affect bacteria.\nAvoiding this problem is not exactly what is happening on the planet, but it is the part that is already in the body.\nThe problem is, at least not completely understood.\nAvoiding a problem in the body is not so much.\nTreatment and cure\nWhen the bacteria can't be spread",
+      "generated_tokens": 80,
+      "prompt": "Antibiotic resistance occurs when",
+      "prompt_tokens": 7,
+      "stopped_on_eos": false
+    }
+  ],
+  "gpu": null,
+  "interpretation": "This smoke test verifies promoted-checkpoint identity, lineage, compatibility, finite inference, and autoregressive generation. The continued-pretraining checkpoint is not instruction-tuned, and this test does not establish medical factuality or clinical safety. Do not use its output for medical decisions.",
+  "maximum_positions": 1024,
+  "precision": "fp32",
+  "promotion_verification": {
+    "test_used_for_selection": false,
+    "validation_selected": true
+  },
+  "recorded_evaluation": {
+    "general_test": {
+      "batches": 38,
+      "duration_seconds": 2.508358477999991,
+      "loss": 3.6919128343804823,
+      "perplexity": 40.121519424795416,
+      "samples": 1185,
+      "tokens": 303360
+    },
+    "general_validation": {
+      "batches": 57,
+      "duration_seconds": 3.587780812999995,
+      "loss": 3.348985241725274,
+      "perplexity": 28.473824929109348,
+      "samples": 1822,
+      "tokens": 466432
+    },
+    "medical_test": {
+      "batches": 123,
+      "duration_seconds": 8.112622084000009,
+      "loss": 3.1628958341919153,
+      "perplexity": 23.638951391958415,
+      "samples": 3926,
+      "tokens": 1005056
+    },
+    "medical_validation": {
+      "batches": 122,
+      "duration_seconds": 8.327163157000086,
+      "loss": 3.1356517410704954,
+      "perplexity": 23.003623363628893,
+      "samples": 3897,
+      "tokens": 997632
+    }
+  },
+  "seed": 42,
+  "stage": "continual_medical_stage_b_v2",
+  "status": "passed",
+  "torch_version": "2.13.0+cpu",
+  "unique_trainable_parameters": 35463680,
+  "vocabulary_size": 16000
+}
