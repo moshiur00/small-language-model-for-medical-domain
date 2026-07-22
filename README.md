@@ -201,27 +201,87 @@ Machine-readable evidence is available in the
 ## System overview
 
 ```mermaid
-flowchart LR
-    A[Raw general and medical sources] --> B[Standardize and clean]
-    B --> C[License, language, quality, toxicity checks]
-    C --> D[Exact and MinHash deduplication]
-    D --> E[Custom 16K ByteLevel BPE]
-    E --> F[EOS-packed uint16 shards]
-    F --> G[Stage A: train from scratch]
-    G --> H[Promote checkpoint 00007250]
-    H --> I[Stage B v2 matched pilots]
-    I --> J[Retention-aware full run]
-    J --> K[Medical + general validation]
-    K --> L[Promote checkpoint 00008000]
-    L --> M[Stage C response-only SFT]
-    M --> N[Register balanced + specialist]
-    N --> O[One-time sealed test]
-    O --> P[Promote, preserve, infer]
+flowchart TB
+    subgraph DATA["1 · Data engineering and tokenizer"]
+        direction LR
+        D0["General, medical,<br/>and instruction sources"]
+        D1["Standardize schemas<br/>and preserve provenance"]
+        D2["Clean · language ID · license<br/>quality · toxicity policy"]
+        D3["Exact + MinHash deduplication<br/>and split-leakage audits"]
+        D4["Custom 16K ByteLevel BPE<br/>EOS-separated uint16 shards"]
+        D0 --> D1 --> D2 --> D3 --> D4
+    end
+
+    subgraph STAGE_A["2 · Stage A — general pretraining"]
+        direction LR
+        A0["Random initialization<br/>35.5M decoder-only Transformer"]
+        A1["Direct packed causal loss<br/>239.5M tokens · 1 epoch"]
+        A2{"General validation<br/>and integrity gates"}
+        A3["Promoted Stage A<br/>checkpoint 00007250"]
+        A0 --> A1 --> A2 --> A3
+    end
+
+    subgraph STAGE_B["3 · Stage B — continual medical pretraining"]
+        direction LR
+        B0["Load Stage A weights<br/>fresh optimization state"]
+        B1["v1 experiment<br/>forgetting detected"]
+        B2["v2 matched pilots<br/>full · frozen · L2-SP"]
+        B3["70% medical + 30% rehearsal<br/>lower LR · 1 epoch"]
+        B4{"Medical improvement<br/>inside general-retention band?"}
+        B5["Promoted Stage B v2<br/>checkpoint 00008000"]
+        B6["Stop or reject candidate"]
+        B0 --> B1
+        B1 -.->|failure informed v2| B2
+        B0 --> B2 --> B3 --> B4 -->|Yes| B5
+        B4 -->|No| B6
+    end
+
+    subgraph STAGE_C["4 · Stage C — supervised instruction fine-tuning"]
+        direction LR
+        C0["Load Stage B v2 weights<br/>fresh optimization state"]
+        C1["Canonical prompts<br/>response-only masked loss"]
+        C2["LR pilots + 3-epoch run<br/>triple validation"]
+        C3["Lock profiles before test<br/>balanced 125 · specialist 588"]
+        C4["One-time sealed SFT,<br/>medical, and general tests"]
+        C0 --> C1 --> C2 --> C3 --> C4
+    end
+
+    subgraph EVIDENCE["5 · Evidence, preservation, and next decision"]
+        direction LR
+        E0["Token metrics improved<br/>on all seven SFT sources"]
+        E1["Qualitative generation failed<br/>repetition + unsafe errors"]
+        E2["SHA-256 verified bundles<br/>reports · checkpoints · lineage"]
+        E3["Planned Stage D<br/>verified distillation → LoRA → DPO"]
+        E0 --> E2
+        E1 --> E2
+        E1 -.->|motivates| E3
+    end
+
+    D4 --> A0
+    A3 --> B0
+    B5 --> C0
+    C4 --> E0
+    C4 --> E1
+
+    classDef data fill:#e8f1ff,stroke:#2563a9,color:#102a43,stroke-width:1.5px;
+    classDef checkpoint fill:#e8f7ee,stroke:#238636,color:#12351d,stroke-width:2px;
+    classDef gate fill:#fff4d6,stroke:#b7791f,color:#5f3b00,stroke-width:1.5px;
+    classDef warning fill:#ffe8e8,stroke:#c53030,color:#63171b,stroke-width:2px;
+    classDef planned fill:#f1e8ff,stroke:#7c3aed,color:#3b176b,stroke-width:1.5px,stroke-dasharray:5 3;
+
+    class D0,D1,D2,D3,D4 data;
+    class A3,B5,E2 checkpoint;
+    class A2,B4,C3,C4 gate;
+    class B1,B6,E1 warning;
+    class E3 planned;
 ```
 
-The same model architecture and tokenizer are retained across Stage A and Stage B.
-Stage B starts from Stage A model weights but deliberately initializes a fresh
-optimizer, scheduler, precision scaler, RNG progression, and training state.
+The architecture and tokenizer remain fixed across all three completed training
+stages. Stage B and Stage C load only their promoted parent's model weights and
+deliberately create fresh optimizer, scheduler, precision-scaler, RNG progression,
+and trainer state. Validation selects checkpoints; sealed tests report locked
+decisions and never participate in selection. The red generation result is therefore
+kept alongside the positive token metrics rather than hidden behind them.
 
 ## Model architecture
 
