@@ -42,7 +42,8 @@ import sys
 
 drive.mount('/content/drive')
 
-REPOSITORY_URL = 'https://github.com/moshiru00/small-language-model-for-medical-domain.git'
+REPOSITORY_URL = 'https://github.com/moshiur00/small-language-model-for-medical-domain.git'
+REPOSITORY_BRANCH = 'main'
 REPOSITORY = Path('/content/medical-slm')
 DATA_ARCHIVE = Path('/content/drive/MyDrive/medical-slm/stage-b-v2-data.tar')
 DRIVE_PARENT = Path('/content/drive/MyDrive/medical-slm-runs/stage_a/checkpoints/checkpoint_00007250')
@@ -51,12 +52,40 @@ DRIVE_ROOT = Path('/content/drive/MyDrive/medical-slm-runs/stage_b_v2')
 EXPECTED_ARCHIVE_SHA256 = '{ARCHIVE_SHA256}'
 
 assert DATA_ARCHIVE.is_file(), f'Missing {{DATA_ARCHIVE}}'
-assert (DRIVE_PARENT / 'manifest.json').is_file(), f'Missing {{DRIVE_PARENT}}'
+if not (DRIVE_PARENT / 'checkpoint_manifest.json').is_file():
+    search_root = Path('/content/drive/MyDrive/medical-slm-runs')
+    parent_manifests = sorted(
+        search_root.rglob('checkpoint_00007250/checkpoint_manifest.json')
+    ) if search_root.is_dir() else []
+    if parent_manifests:
+        DRIVE_PARENT = parent_manifests[0].parent
+        print('Auto-discovered Stage A parent:', DRIVE_PARENT)
+    else:
+        raise FileNotFoundError(
+            'Cannot find checkpoint_00007250/checkpoint_manifest.json under '
+            f'{{search_root}}. Restore or upload the promoted Stage A checkpoint.'
+        )
+
+if REPOSITORY.exists() and not (REPOSITORY / '.git').is_dir():
+    print('Removing stale non-Git runtime directory:', REPOSITORY)
+    shutil.rmtree(REPOSITORY)
 
 if not (REPOSITORY / '.git').is_dir():
-    subprocess.run(['git', 'clone', REPOSITORY_URL, str(REPOSITORY)], check=True)
+    subprocess.run([
+        'git', 'clone', '--branch', REPOSITORY_BRANCH, '--single-branch',
+        REPOSITORY_URL, str(REPOSITORY),
+    ], check=True)
 else:
-    subprocess.run(['git', '-C', str(REPOSITORY), 'pull', '--ff-only'], check=True)
+    subprocess.run([
+        'git', '-C', str(REPOSITORY), 'fetch', 'origin', REPOSITORY_BRANCH,
+    ], check=True)
+    subprocess.run([
+        'git', '-C', str(REPOSITORY), 'checkout', REPOSITORY_BRANCH,
+    ], check=True)
+    subprocess.run([
+        'git', '-C', str(REPOSITORY), 'pull', '--ff-only',
+        'origin', REPOSITORY_BRANCH,
+    ], check=True)
 
 os.chdir(REPOSITORY)
 subprocess.run([
@@ -78,7 +107,7 @@ if not train_metadata.is_file():
     subprocess.run(['tar', '-xf', str(DATA_ARCHIVE), '-C', str(REPOSITORY)], check=True)
 
 LOCAL_PARENT.parent.mkdir(parents=True, exist_ok=True)
-if not (LOCAL_PARENT / 'manifest.json').is_file():
+if not (LOCAL_PARENT / 'checkpoint_manifest.json').is_file():
     subprocess.run(['rsync', '-a', f'{{DRIVE_PARENT}}/', f'{{LOCAL_PARENT}}/'], check=True)
 
 from medical_slm.training.checkpoint import verify_checkpoint
