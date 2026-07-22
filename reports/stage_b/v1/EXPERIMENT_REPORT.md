@@ -1,7 +1,7 @@
 # Stage B v1 Full Continual-Pretraining Experiment
 
 **Experiment status:** Training complete; preserved comparison baseline  
-**Medical test status:** Not evaluated  
+**Medical test status:** Evaluated once after validation-only selection
 **Parent:** Stage A `checkpoint_00007250`
 
 ## Purpose
@@ -55,6 +55,14 @@ The completed run state at update 6,840 recorded:
 
 The endpoint demonstrates substantial medical adaptation accompanied by catastrophic general-domain forgetting. It is an experimental comparison endpoint, not the promoted model.
 
+### Retention-selected medical test
+
+After `checkpoint_00000250` was fixed using validation only, its one-time medical
+test evaluation produced loss 3.395429 and perplexity 29.827 over 3,926 samples
+and 1,005,056 target tokens. These results did not influence checkpoint
+selection. Stage B v2 later reduced medical-test perplexity by approximately
+20.75% relative to this v1 result.
+
 ## Preserved checkpoints
 
 The preservation bundle contains the full immutable checkpoints referenced by:
@@ -75,7 +83,8 @@ The raw full-run `metrics.jsonl`, dataset manifests, tokenizer, configurations, 
 
 Stage B v1 is evidence that full-parameter adaptation at `1e-4` with only 17.78% general rehearsal moves the 35M-parameter model rapidly toward the medical distribution but exceeds the desired retention budget. This is not a loss-alignment, checkpoint, data-lineage, or numerical-stability failure. It is the observed optimization trade-off for this recipe.
 
-No medical-test result should be added to v1 until the project has predeclared which experiment and checkpoint will receive the one-time test evaluation.
+The medical test is now known. It must not be used retrospectively to change the
+v1 checkpoint or tune later experiments.
 
 ## Planned comparisons
 

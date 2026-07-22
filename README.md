@@ -368,7 +368,7 @@ Tokenizer tooling is located under `scripts/tokenizer/` and `src/medical_slm/tok
 
 ## Stage B continual pretraining
 
-Stage B v1 completed one epoch and exposed substantial catastrophic forgetting despite improving medical validation. It is preserved as comparison evidence rather than promoted as the final medical model. Stage B v2 is now implemented as a separate retention-aware experiment initialized from promoted Stage A checkpoint `checkpoint_00007250`.
+Stage B v1 completed one epoch and exposed substantial catastrophic forgetting despite improving medical validation. Stage B v2 subsequently completed and promoted validation-selected `checkpoint_00008000`: medical validation loss 3.135652, general validation loss 3.348985, medical test loss 3.162896, and general test loss 3.691913. This is a continued-pretraining base model, not a clinically safe assistant.
 
 The promoted Stage A checkpoint is a pretraining baseline, not a deployable medical assistant.
 
@@ -442,8 +442,10 @@ For the complete Colab workflow, use [notebooks/colab_stage_b.ipynb](notebooks/c
 
 Stage B v1 has now completed one full epoch and is retained as a comparison experiment rather than a final medical model. Its full endpoint improved medical validation while causing substantial general-domain forgetting. Before Stage B v2 or LoRA work, preserve its protected checkpoints and metrics using [the v1 preservation workflow](reports/stage_b/v1/PRESERVATION_AND_COMPARISON.md). The tracked [continual-adaptation registry](reports/comparisons/continual_adaptation_registry.json) defines the common comparison contract for the Stage A parent, full continual-pretraining variants, and future LoRA adapters.
 
-### Stage B v2 retention-aware pilots
+### Stage B v2 retention-aware result
 
-V2 uses a verified Stage-A-disjoint 70/30 medical/general corpus containing 263,202,304 supervised tokens in 1,028,134 packed sequences. It lowers the peak learning rate to `4e-5`, supports selective freezing and normalized L2-SP anchoring to Stage A, evaluates retention as relative general perplexity change, and stops automatically after two consecutive emergency-band validations. Three matched 500-update pilots compare full-parameter training, selective freezing, and selective freezing plus L2-SP before a full run is selected. LoRA remains a planned fourth comparison.
+V2 used a verified Stage-A-disjoint 70/30 medical/general corpus containing 263,202,304 supervised tokens in 1,028,134 packed sequences. Three matched pilots selected lower-learning-rate full-parameter training over selective freezing and selective freezing plus L2-SP. The completed 8,033-update run selected update 8,000 using validation only; its 16.25% general-validation perplexity degradation remained inside the preferred 20% budget while medical-validation perplexity improved from 32.06 to 23.00. The guarded one-time test produced medical perplexity 23.64 and general perplexity 40.12. LoRA remains a planned comparison and its tuning must not use these now-known test results.
 
 Use [the Stage B v2 experiment plan](reports/stage_b/v2/EXPERIMENT_PLAN.md), [Colab pilot guide](reports/stage_b/v2/COLAB_PILOT_GUIDE.md), and [self-contained Colab notebook](notebooks/colab_stage_b_v2.ipynb). The notebook includes archive and parent verification, automatic FP16/BF16 selection, the zero-update baseline, one-batch alignment, isolated pilot directories, exact pilot/full resume, atomic checkpoint-time metrics mirroring, standalone fresh/resume full-run cells, validation-only final checkpoint selection, and guarded one-time medical/general test evaluation.
+
+The final evidence and promotion decision are recorded in [the Stage B v2 experiment report](reports/stage_b/v2/EXPERIMENT_REPORT.md) and its adjacent machine-readable JSON artifacts. The selected binary checkpoint is verified in Drive and still requires local preservation.

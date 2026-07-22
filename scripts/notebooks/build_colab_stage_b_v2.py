@@ -698,6 +698,80 @@ cells = [
     })
     print('STAGE B V2 TEST AND PROMOTION ARTIFACTS: WRITTEN')
     """),
+    markdown("""
+    # Preserve promoted and final Stage B v2 checkpoints
+
+    Run after promotion artifacts exist. This creates a checksummed bundle with
+    the selected checkpoint, final endpoint, metrics, reports, pointer files,
+    configurations, tokenizer, and dataset manifests, then copies it to Drive.
+    """),
+    code("""
+    from google.colab import drive
+    from pathlib import Path
+    import hashlib
+    import os
+    import shutil
+    import subprocess
+
+    drive.mount('/content/drive')
+    repository = Path('/content/medical-slm')
+    assert (repository / '.git').is_dir()
+    os.chdir(repository)
+    subprocess.run(['git', 'fetch', 'origin', 'main'], check=True)
+    subprocess.run(['git', 'checkout', 'main'], check=True)
+    subprocess.run(['git', 'pull', '--ff-only', 'origin', 'main'], check=True)
+
+    drive_v2 = Path('/content/drive/MyDrive/medical-slm-runs/stage_b_v2')
+    checkpoint_root = drive_v2 / 'full/checkpoints'
+    run_output = drive_v2 / 'full'
+    bundle = Path('/content/stage_b_v2')
+    archive = Path('/content/stage_b_v2_preservation.tar')
+    checksum = Path(str(archive) + '.sha256')
+    assert not bundle.exists(), f'Refusing overwrite: {bundle}'
+    assert not archive.exists(), f'Refusing overwrite: {archive}'
+    assert (drive_v2 / 'promoted_stage_b_v2.json').is_file()
+    assert (run_output / 'metrics.jsonl').is_file()
+
+    subprocess.run([
+        'python', 'scripts/artifacts/export_stage_b_v2.py',
+        '--checkpoint-root', str(checkpoint_root),
+        '--run-output', str(run_output),
+        '--report-root', str(drive_v2),
+        '--destination', str(bundle),
+        '--archive', str(archive),
+    ], check=True)
+    subprocess.run([
+        'python', 'scripts/artifacts/verify_preserved_run.py',
+        '--root', str(bundle),
+    ], check=True)
+
+    preservation_drive = drive_v2 / 'preservation'
+    preservation_drive.mkdir(parents=True, exist_ok=True)
+
+    def sha256_file(path):
+        digest = hashlib.sha256()
+        with path.open('rb') as source_file:
+            for chunk in iter(lambda: source_file.read(8 * 1024 * 1024), b''):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    for source in (archive, checksum):
+        destination = preservation_drive / source.name
+        assert not destination.exists(), f'Refusing overwrite: {destination}'
+        temporary = destination.with_suffix(destination.suffix + '.partial')
+        temporary.unlink(missing_ok=True)
+        shutil.copy2(source, temporary)
+        assert sha256_file(source) == sha256_file(temporary)
+        os.replace(temporary, destination)
+
+    print({
+        'archive': str(preservation_drive / archive.name),
+        'archive_bytes': archive.stat().st_size,
+        'sha256_record': checksum.read_text().strip(),
+        'bundle': str(bundle),
+    })
+    print('STAGE B V2 PHYSICAL PRESERVATION: VERIFIED')
+    """),
 ]
 
 
