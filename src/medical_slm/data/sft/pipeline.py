@@ -153,15 +153,31 @@ def _encode_prompt_and_response(
     )
 
 
-def _format_prompt(
+def format_sft_prompt(
     instruction: str,
-    context: str,
-    context_type: str,
+    context: str = "",
+    context_type: str = "none",
 ) -> str:
+    """Return the canonical Stage C prompt used by training and inference."""
+    if not isinstance(instruction, str) or not instruction.strip():
+        raise ValueError("SFT instruction must be a non-empty string.")
+    if not isinstance(context, str):
+        raise TypeError("SFT context must be a string.")
+    context_type = context_type.strip().lower()
+    if context_type not in {"none", "input", "options"}:
+        raise ValueError("context_type must be one of: none, input, options.")
+    if context.strip() and context_type == "none":
+        context_type = "input"
+    if not context.strip() and context_type != "none":
+        raise ValueError("A non-none context_type requires non-empty context.")
     prompt = f"Instruction:\n{instruction.strip()}"
     if context.strip():
         prompt += f"\n\n{context_type.title()}:\n{context.strip()}"
     return prompt + RESPONSE_SEPARATOR
+
+
+# Kept private as a compatibility alias for callers from older prepared-data code.
+_format_prompt = format_sft_prompt
 
 
 def create_structured_response_masked_example(
@@ -174,7 +190,7 @@ def create_structured_response_masked_example(
     max_length: int,
 ) -> EncodedSFTExample:
     """Encode structured SFT text, truncating context before the response."""
-    base_prompt = _format_prompt(instruction, "", "none")
+    base_prompt = format_sft_prompt(instruction, "", "none")
     base_prompt_ids = tokenizer.encode(base_prompt, add_special_tokens=False)
     response_ids = tokenizer.encode(response, add_special_tokens=False)
     available = max_length - 2
@@ -186,7 +202,7 @@ def create_structured_response_masked_example(
         )
 
     context = context.strip()
-    prompt = _format_prompt(instruction, context, context_type)
+    prompt = format_sft_prompt(instruction, context, context_type)
     prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
     context_truncated = False
 
@@ -200,10 +216,10 @@ def create_structured_response_masked_example(
             while low <= high:
                 middle = (low + high) // 2
                 candidate_context = context[:middle].rstrip()
-                candidate_prompt = _format_prompt(
+                candidate_prompt = format_sft_prompt(
                     instruction,
                     candidate_context,
-                    context_type,
+                    context_type if candidate_context else "none",
                 )
                 candidate_ids = tokenizer.encode(
                     candidate_prompt,

@@ -8,6 +8,7 @@ from medical_slm.data.sft.pipeline import (
     _split_records,
     create_response_masked_example,
     create_structured_response_masked_example,
+    format_sft_prompt,
     parse_sft_text,
 )
 
@@ -20,6 +21,22 @@ class FakeTokenizer:
     def encode(self, text: str, add_special_tokens: bool = False) -> list[int]:
         assert not add_special_tokens
         return list(range(10, 10 + len(text.split())))
+
+
+def test_inference_prompt_uses_the_training_template() -> None:
+    assert format_sft_prompt("Explain fever.") == (
+        "Instruction:\nExplain fever.\n\nResponse:\n"
+    )
+    assert format_sft_prompt("Choose.", "A. One\nB. Two", "options") == (
+        "Instruction:\nChoose.\n\nOptions:\nA. One\nB. Two\n\nResponse:\n"
+    )
+
+
+def test_inference_prompt_rejects_invalid_structure() -> None:
+    with pytest.raises(ValueError, match="non-empty"):
+        format_sft_prompt("  ")
+    with pytest.raises(ValueError, match="non-empty context"):
+        format_sft_prompt("Question", "", "options")
 
 
 def test_parse_instruction_input_response() -> None:

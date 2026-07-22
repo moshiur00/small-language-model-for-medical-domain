@@ -112,3 +112,14 @@ def test_stage_c_profiles_are_locked_before_guarded_test_access() -> None:
     assert sealed_test.index("PROFILE_REGISTRATION.is_file()") < sealed_test.index(
         "tar', '-xf'"
     )
+
+
+def test_stage_c_notebook_promotes_preserves_and_runs_both_profiles() -> None:
+    source = "\n".join(code_cells())
+    assert "promote_stage_c_profiles.py" in source
+    assert "test_used_for_selection'] is False" in source
+    assert "export_stage_c.py" in source
+    assert "verify_preserved_run.py" in source
+    assert "STAGE C PHYSICAL PRESERVATION: VERIFIED" in source
+    assert "check_stage_c_model.py" in source
+    assert "medical_instruction_specialist'  # or 'balanced_retention" in source
