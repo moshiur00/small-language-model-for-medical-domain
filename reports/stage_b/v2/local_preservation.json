@@ -1,0 +1,24 @@
+{
+  "archive": {
+    "name": "stage_b_v2_preservation.tar",
+    "sha256": "b5e4f75623d1af74dd825c873d549109bd9ad42e0d150cfffc279f0dd9c64263",
+    "size_bytes": 853012480
+  },
+  "bundle": {
+    "files_verified": 41,
+    "path": "artifacts/training/stage_b_v2",
+    "size_bytes_including_preservation_manifest": 852918062
+  },
+  "checkpoints_verified": [
+    "checkpoint_00008000",
+    "checkpoint_00008033"
+  ],
+  "generated_at": "2026-07-22T13:51:27.6990203+02:00",
+  "promoted_checkpoint": {
+    "checkpoint_manifest_sha256": "ea60b0d6b66ea3bd1987f9ff7bbdd75ba34bc0f05b7c21349ad6ef90615a9b71",
+    "checkpoint_name": "checkpoint_00008000",
+    "model_sha256": "799fe9c34648044d21bf73258cd55a46716167f89dcf64e2c0487e0382d65c14",
+    "tokenizer_sha256": "6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e"
+  },
+  "status": "verified"
+}

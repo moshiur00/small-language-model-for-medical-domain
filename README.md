@@ -1,451 +1,568 @@
 # Medical Small Language Model
 
-A from-scratch decoder-only language model and training pipeline intended for a staged medical-language-model curriculum. The repository covers data preparation, tokenizer training and evaluation, packed causal pretraining, exact checkpoint resume, cloud execution, and final checkpoint promotion.
+**A 35.5M-parameter decoder-only Transformer built and trained from scratch, then
+adapted to medical text with retention-aware continual pretraining.**
 
-> [!IMPORTANT]
-> This is a research and engineering project, not a clinical system. The Stage A checkpoint has only been evaluated with language-model loss and perplexity. It has not been evaluated for medical correctness, factuality, safety, diagnosis, treatment recommendations, or real-world patient use.
+`Python 3.11+` · `PyTorch` · `Custom 16K BPE tokenizer` · `387 tests` ·
+`Deterministic resume` · `Colab/RunPod workflows`
 
-## Navigation
+This portfolio project implements the complete path from raw text to a promoted
+language-model checkpoint: source standardization, licensing and quality controls,
+deduplication, tokenizer training, packed binary datasets, native Transformer
+architecture, mixed-precision training, exact crash resume, controlled continual-
+pretraining experiments, dual-domain evaluation, artifact preservation, and
+autoregressive inference.
 
-- [Current status](#current-status)
-- [Stage A model](#stage-a-model)
-- [Training data contract](#training-data-contract)
-- [Installation](#installation)
-- [Tests](#tests)
-- [Use the promoted Stage A model](#use-the-promoted-stage-a-model)
-- [Local Stage A commands](#local-stage-a-commands)
-- [Google Colab](#google-colab)
-- [Checkpoints and preservation](#checkpoints-and-preservation)
-- [Reproducibility snapshot](#reproducibility-snapshot)
-- [Stage B continual pretraining](#stage-b-continual-pretraining)
+> [!WARNING]
+> This is a research base model, not a clinical system. It is not instruction-tuned
+> and has not been validated for medical factuality, diagnosis, treatment advice,
+> patient safety, or real-world clinical use. Generated text must not be used for
+> medical decisions.
 
-## Current status
+## Project status
 
-**Stage A pretraining is complete.** The model was trained from random initialization for one full epoch over the packed Stage A dataset on Google Colab Pro using a Tesla T4 and FP16.
+| Stage | Status | Outcome |
+|---|---|---|
+| Data and tokenizer | Complete | Licensed, filtered corpora; custom 16,000-token ByteLevel BPE |
+| Stage A general pretraining | Complete | One epoch from random initialization; checkpoint `00007250` promoted |
+| Stage B v1 continual pretraining | Complete, comparison only | Exposed catastrophic forgetting under an overly strict retention rule |
+| Stage B v2 retention-aware pretraining | **Complete and promoted** | Checkpoint `00008000` improved medical validation while remaining inside the declared retention band |
+| Stage B v2 inference gate | **Passed** | Checkpoint identity, lineage, tokenizer compatibility, finite logits, and generation verified |
+| LoRA comparison | Planned | Must use the same Stage A parent and validation-only selection contract |
+| Supervised fine-tuning | Infrastructure prepared, training not started | Separate response-masked causal-loss path implemented |
 
-| Item | Result |
-|---|---:|
-| Training sequences | 935,642 |
-| Consumed training tokens | 239,524,352 |
-| Optimizer updates | 7,310 |
-| Unique trainable parameters | 35,463,680 |
-| Skipped updates | 0 |
-| Non-finite events | 0 |
-| Best checkpoint | `checkpoint_00007250` |
-| Final chronological checkpoint | `checkpoint_00007310` |
-| Best validation loss | 3.198383 |
-| Best validation perplexity | 24.492887 |
-| Held-out test loss | 3.679168 |
-| Held-out test perplexity | 39.613418 |
-| Post-training inference gate | Passed |
-| Current regression suite | 365 passed |
+The current promoted domain-adapted model is **Stage B v2
+`checkpoint_00008000`**. Its full checkpoint is preserved locally and in Google
+Drive; large binary artifacts are intentionally excluded from Git.
 
-Checkpoint 7,250 was promoted because its full-validation loss was marginally lower than the final update-7,310 checkpoint. The test set was evaluated only after checkpoint selection.
+## Results at a glance
 
-“Stage A complete” means that the planned one-epoch general-domain pretraining run, checkpoint selection, held-out evaluation, artifact verification, and promotion are complete. It does **not** mean that the model is ready for medical use; continual medical pretraining, supervised fine-tuning, task evaluation, and safety evaluation remain future stages.
+### Validation-controlled experiment comparison
 
-For the complete implementation and experiment history, see [Stage A Implementation and Training Report](reports/stage_a/STAGE_A_IMPLEMENTATION_AND_TRAINING_REPORT.md).
+| Experiment | Training tokens | Medical validation loss | General validation loss | Selection outcome |
+|---|---:|---:|---:|---|
+| Stage A parent | 239,524,352 | 3.467505 | **3.198383** | General-pretraining baseline |
+| Stage B v1 best eligible, update 250 | 8,192,000 | 3.374685 | 3.330027 | Promoted under v1's 5% loss ceiling |
+| Stage B v1 full endpoint, update 6,840 | 224,120,320 | **3.009167** | 3.749123 | Rejected: severe general-domain forgetting |
+| **Stage B v2, update 8,000** | **262,144,000** | **3.135652** | **3.348985** | **Promoted inside the preferred retention band** |
 
-Machine-readable results:
+Stage B v1 is intentionally retained as a negative experimental result: optimizing
+medical loss alone produced a stronger in-domain loss but unacceptable general-
+domain regression. Stage B v2 addressed that failure with more general rehearsal,
+a lower learning rate, earlier dual validation, explicit retention bands, and
+matched pilot experiments.
 
-- [Stage A evaluation](reports/stage_a/stage_a_evaluation.json)
-- [Promoted checkpoint pointer](reports/stage_a/promoted_stage_a.json)
-- [Stage A generation smoke test](reports/stage_a/stage_a_generation_smoke_test.json)
+### Final Stage B v2 evaluation
 
-## Stage A model
+| Distribution | Validation loss | Validation perplexity | Test loss | Test perplexity |
+|---|---:|---:|---:|---:|
+| Medical | **3.135652** | **23.004** | **3.162896** | **23.639** |
+| General | 3.348985 | 28.474 | 3.691913 | 40.122 |
 
-| Setting | Value |
+Compared with the Stage A parent:
+
+- Medical validation perplexity decreased from **32.057 to 23.004**.
+- General validation perplexity increased by **16.25%**, inside the predeclared
+  preferred 20% retention budget.
+- General test perplexity increased from **39.613 to 40.122**, approximately 1.28%.
+- Medical test perplexity was approximately **20.75% lower** than Stage B v1's
+  retention-selected checkpoint.
+
+Checkpoint selection used validation data only. Medical and general test splits
+were opened once after the selected checkpoint was fixed. Those test results are now
+known and must not be used to tune future LoRA or SFT experiments.
+
+## What this project demonstrates
+
+- A decoder-only Transformer implemented directly in PyTorch rather than delegated
+  to a pretrained Hugging Face model.
+- A custom tokenizer and binary packed-dataset format with manifest-level
+  provenance and SHA-256 integrity checks.
+- Correct direct loss for already-shifted packed labels, preventing the common
+  double-shifting failure mode.
+- Deterministic, epoch-seeded shuffling with an explicit resumable batch cursor.
+- Mixed FP32/BF16/FP16 execution, gradient accumulation, clipping, and FP16 loss
+  scaling.
+- Atomic, immutable, resumable checkpoints containing all optimizer and RNG state.
+- Parent-child checkpoint lineage for continual pretraining.
+- Controlled adaptation experiments that treat catastrophic forgetting as a
+  measurable constraint rather than a qualitative afterthought.
+- Validation-only promotion, sealed-test discipline, structured JSONL metrics, and
+  machine-readable experiment records.
+- Google Colab Pro workflows with local-SSD data staging and verified Google Drive
+  checkpoint mirroring.
+- Physical preservation of promoted and final checkpoints with archive-level hashes.
+
+## System overview
+
+```mermaid
+flowchart LR
+    A[Raw general and medical sources] --> B[Standardize and clean]
+    B --> C[License, language, quality, toxicity checks]
+    C --> D[Exact and MinHash deduplication]
+    D --> E[Custom 16K ByteLevel BPE]
+    E --> F[EOS-packed uint16 shards]
+    F --> G[Stage A: train from scratch]
+    G --> H[Promote checkpoint 00007250]
+    H --> I[Stage B v2 matched pilots]
+    I --> J[Retention-aware full run]
+    J --> K[Medical + general validation]
+    K --> L[Promote checkpoint 00008000]
+    L --> M[Integrity and inference gates]
+```
+
+The same model architecture and tokenizer are retained across Stage A and Stage B.
+Stage B starts from Stage A model weights but deliberately initializes a fresh
+optimizer, scheduler, precision scaler, RNG progression, and training state.
+
+## Model architecture
+
+| Component | Final configuration |
 |---|---:|
 | Architecture | Decoder-only causal Transformer |
-| Unique trainable parameters | 35,463,680 |
-| Vocabulary size | 16,000 |
+| Unique parameters | 35,463,680 |
+| Vocabulary | 16,000 |
 | Hidden size | 512 |
-| Layers | 8 |
+| Transformer layers | 8 |
 | Attention heads | 8 |
 | Head dimension | 64 |
-| Intermediate size | 1,536 |
+| SwiGLU intermediate size | 1,536 |
 | Maximum positions | 1,024 |
-| Stage A sequence length | 256 |
-| Normalization | RMSNorm |
-| Activation | SwiGLU |
-| Positions | RoPE |
-| Embeddings | Input/output weights tied |
+| Training sequence length | 256 |
+| Normalization | Pre-norm RMSNorm, epsilon `1e-5` |
+| Positional encoding | RoPE, theta `10,000` |
+| Attention | PyTorch scaled-dot-product causal attention |
+| Projections | Bias-free attention and MLP projections |
+| Embeddings | Input embedding and LM head weights tied |
 | Dropout | 0.0 |
+| Initialization standard deviation | 0.02 |
 
-The 1,024-position architecture leaves room for later continual pretraining or supervised fine-tuning at longer sequence lengths even though Stage A uses length 256.
+The 1,024-position architecture permits later training or fine-tuning at longer
+contexts even though current packed pretraining examples contain 256 supervised
+positions.
 
-The implementation uses pre-normalized decoder blocks, PyTorch scaled-dot-product causal attention, rotary embeddings on queries and keys, bias-free attention/MLP projections, and a tied token-embedding/language-model head.
+Implementation: [`src/medical_slm/model/`](src/medical_slm/model/)
 
-## Training data contract
+## Data engineering
 
-The Stage A dataset is a packed causal-language-model dataset stored in binary `uint16` shards. Each record contains 257 token IDs and produces 256 supervised positions:
+The repository includes reusable pipelines for:
+
+- source-specific schema standardization;
+- text normalization and cleaning;
+- license normalization and policy enforcement;
+- FastText language verification;
+- heuristic quality scoring and filtering;
+- context-aware toxicity auditing;
+- within-source and global exact deduplication;
+- MinHash near-duplicate detection;
+- corpus assembly with token budgets and document exclusions;
+- tokenizer training, evaluation, and GPT-2 comparison;
+- deterministic EOS-separated packing into binary shards.
+
+Source adapters cover general and medical datasets including FineWeb-Edu,
+Wikipedia, WikiText, Project Gutenberg, TinyStories, PubMed abstracts, PMC Open
+Access, WikiDoc, PubMedQA, MedMCQA, ChatDoctor, MedAlpaca, MedInstruct, and
+OpenMedicalInstruct-style records. Inclusion in a final corpus remains governed by
+the configured license, quality, overlap, and phase-allocation policies.
+
+### Tokenizer
+
+The model uses a project-trained GPT-2-style ByteLevel BPE tokenizer:
+
+| Property | Value |
+|---|---:|
+| Vocabulary size | 16,000 |
+| Document separator | `<eos>` |
+| Required generation tokens | `<bos>`, `<eos>` |
+| Tokenizer SHA-256 | `6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e` |
+
+Tokenizer evaluation reports vocabulary utilization, token/word and byte/token
+efficiency, unknown-token rate, document lengths, and medical-term fragmentation.
+
+### Packed causal-training contract
+
+Each stored record contains 257 `uint16` token IDs and yields 256 supervised targets:
 
 ```python
 input_ids = sample[:-1]
 labels = sample[1:]
 ```
 
-The labels are already shifted by the dataset. The pretraining loss therefore compares logits and labels directly and must not perform a second causal shift. Supervised fine-tuning uses a separate masked causal-loss function because its response mask follows standard causal-label alignment.
+The dataset has already performed the causal shift. Pretraining therefore computes
+cross-entropy directly between `logits[:, t]` and `labels[:, t]`; shifting again
+inside the model would train against the wrong target. SFT uses a separate loss path
+that performs standard causal alignment and excludes non-response tokens through an
+ignore mask.
 
-Key dataset properties:
+### Stage A corpus
 
 | Property | Value |
 |---|---:|
-| Sequences | 935,642 |
+| Packed sequences | 935,642 |
+| Supervised tokens | 239,524,352 |
 | Binary shards | 115 |
 | Sequence length | 256 |
-| Stored sample width | 257 |
-| Document separator | EOS |
-| Label strategy | Shift performed in dataset |
+| General validation | 1,822 samples / 466,432 tokens |
+| General test | 1,185 samples / 303,360 tokens |
 
-Generated tokenized data and large model artifacts are intentionally excluded from Git.
+### Stage B v2 corpus
 
-Evaluation coverage used for final model selection and reporting:
+| Property | Verified value |
+|---|---:|
+| Processed documents | 237,958 |
+| Exact stream tokens | 264,230,631 |
+| Medical tokens | 184,996,718 (70.0134%) |
+| General rehearsal tokens | 79,233,913 (29.9866%) |
+| Packed sequences | 1,028,134 |
+| Supervised targets | 263,202,304 |
+| Binary shards | 126 |
+| Stage A document overlap | **0** |
+| Medical/general evaluation overlap | **0** |
 
-| Split | Samples | Target tokens | Purpose |
-|---|---:|---:|---|
-| Validation | 1,822 | 466,432 | Compare candidate checkpoints |
-| Test | 1,185 | 303,360 | Evaluate the selected checkpoint once |
+The corpus uses PMC Open Access, PubMed abstracts, and WikiDoc for medical exposure,
+with FineWeb-Edu, WikiText-103, and public-domain Project Gutenberg text for general
+rehearsal. All 126 shard sizes and SHA-256 values match the generated manifest.
 
-## Implemented training system
+Detailed data evidence:
 
-The training system includes:
+- [Stage B v2 dataset specification](reports/stage_b/v2/DATASET_SPECIFICATION.md)
+- [Source audit](reports/stage_b/v2/source_audit.json)
+- [Corpus verification](reports/stage_b/v2/corpus_verification.json)
+- [Stage B data-preparation report](reports/stage_b/DATA_PREPARATION_REPORT.md)
 
-- Direct packed shifted-label causal loss with no second shift.
-- Separate response-masked SFT causal loss.
-- Deterministic epoch-seeded batch ordering.
-- Explicit resumable epoch and batch cursor.
-- AdamW decay and no-decay parameter groups.
-- Linear warmup followed by cosine learning-rate decay.
-- FP32, BF16, and gradient-scaled FP16 precision policies.
-- Gradient accumulation and gradient clipping.
-- Token-weighted evaluation and perplexity calculation.
-- Structured JSONL training metrics.
-- Atomic, immutable, checksummed checkpoints.
-- Python, NumPy, PyTorch CPU, and CUDA RNG restoration.
-- Dataset-manifest and tokenizer compatibility validation.
-- Local retention and verified Google Drive checkpoint mirroring.
-- Best, latest, milestone, and final checkpoint pointers.
+## Training system
 
-## Repository layout
+### Optimization
 
-```text
-configs/                       Model and platform training configurations
-notebooks/colab_stage_a.ipynb  Stage A Colab training, resume, and evaluation workflow
-notebooks/colab_stage_b.ipynb  Stage B zero-update Colab baseline gate
-reports/stage_a/               Permanent Stage A reports and promotion metadata
-scripts/training/              Stage A command-line entry point
-src/medical_slm/model/         Decoder architecture
-src/medical_slm/training/      Loss, sampler, optimizer, scheduler, trainer, and checkpoints
-src/medical_slm/data/          Data preparation and tokenized-dataset implementation
-src/medical_slm/tokenizer/     Tokenizer training and evaluation
-tests/                         Unit and end-to-end regression tests
-```
+| Setting | Stage A | Stage B v2 |
+|---|---:|---:|
+| Initialization | Random | Stage A model weights |
+| Optimizer | AdamW | AdamW |
+| Peak learning rate | `3e-4` | `4e-5` |
+| Final learning rate | `3e-5` | `4e-6` |
+| Betas | `(0.9, 0.95)` | `(0.9, 0.95)` |
+| Weight decay | 0.1 | 0.05 |
+| Schedule | Linear warmup + cosine | Linear warmup + cosine |
+| Warmup updates | 73 | 161 |
+| Micro-batch | 16 sequences | 16 sequences |
+| Gradient accumulation | 8 | 8 |
+| Nominal global batch | 32,768 tokens | 32,768 tokens |
+| Gradient clipping | 1.0 | 1.0 |
+| Precision on completed T4 runs | FP16 + GradScaler | FP16 + GradScaler |
+| Epochs | 1 | 1 |
 
-## Installation
+BF16 is selected automatically on compatible hardware; FP16 uses a saved gradient
+scaler, and CPU execution falls back to FP32.
 
-Python 3.11 or newer is required.
+### Determinism and exact resume
 
-```bash
-python -m venv .venv
-```
+The sampler derives each epoch's batch order from the configured seed. Training
+state stores both `epoch` and the next `batch_cursor`, avoiding replay or omission
+after interruption. A resumable checkpoint contains:
 
-Activate the environment on Windows PowerShell:
+- model, optimizer, scheduler, and optional FP16 scaler state;
+- update count, consumed samples/tokens, epoch, and batch cursor;
+- Python, NumPy, PyTorch CPU, and CUDA RNG states;
+- model and training configurations;
+- tokenizer and dataset-manifest compatibility hashes;
+- recent structured metrics and best-validation state;
+- environment metadata and an artifact SHA-256 manifest.
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
+Checkpoint directories are written atomically and treated as immutable. Small JSON
+pointers identify `latest`, best, milestones, and final states. Resume tests verify
+that interrupted training continues at the next exact batch rather than restarting
+an epoch.
 
-Activate it on Linux or macOS:
+### Stage B v2 retention-aware selection
 
-```bash
-source .venv/bin/activate
-```
+All Stage B experiments begin from the exact Stage A parent identity. Three
+500-update pilots consumed the same batches in the same order:
 
-Install the project and development dependencies:
+| Pilot | Trainable scope | L2-SP | Medical validation loss | General validation loss | General PPL degradation |
+|---|---|---:|---:|---:|---:|
+| **Control** | All parameters | 0 | **3.371878** | 3.242126 | 4.47% |
+| Selective freezing | Upper layers | 0 | 3.406951 | 3.207393 | 0.91% |
+| Selective freezing + L2-SP | Upper layers | Enabled | 3.451979 | **3.199858** | **0.15%** |
 
-```bash
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-```
+Because all candidates were inside the preferred retention band, the predeclared
+rule selected the control arm with the best medical loss. The full run then selected
+the lowest medical-validation loss among checkpoints satisfying the retention
+contract:
 
-Confirm that the package and PyTorch runtime can be imported:
+- preferred general-perplexity degradation: at most 20%;
+- hard fallback limit: at most 25%;
+- emergency threshold: 35% for two consecutive validations;
+- test data prohibited from model or checkpoint selection.
 
-```bash
-python -c "import torch, medical_slm; print(torch.__version__)"
-```
+This design makes the adaptation/retention trade-off explicit and preserves the
+selective-freezing and L2-SP pilots as reproducible evidence rather than assuming
+one regularization strategy would be best.
 
-## Tests
+Implementation: [`src/medical_slm/training/`](src/medical_slm/training/)
 
-Run the complete suite from the repository root:
+## Evaluation and inference
 
-```bash
-python -m pytest -q
-```
+Evaluation aggregates summed token loss before division, so loss and perplexity are
+invariant to evaluation batch size. Training emits structured JSONL events for loss,
+learning rate, gradient norm, throughput, validation metrics, memory, skipped
+updates, and non-finite events.
 
-The current complete regression result, including the post-training generation tests, is:
+Both promoted checkpoints have repository-native inference gates. They verify the
+full checkpoint before loading, enforce tokenizer compatibility, strictly load
+weights, reject non-finite logits, validate output shape, and run seeded top-k/top-p
+or greedy autoregressive decoding.
 
-```text
-365 passed in 9.97s
-```
-
-The suite includes targeted tests for double-shifting, SFT masking, deterministic sampler resume, scheduler boundaries, batch-size-invariant evaluation, checkpoint corruption, compatibility checks, RNG restoration, exact resumed trajectories, Drive mirroring, and tiny end-to-end training.
-
-The passing count is historical evidence from the completed Stage A implementation. Rerun the suite after changing code, dependencies, data contracts, or checkpoint logic.
-
-## Use the promoted Stage A model
-
-Before beginning continual pretraining, run the post-training inference gate against the promoted checkpoint:
-
-```bash
-python scripts/evaluation/check_stage_a_model.py
-```
-
-The command defaults to:
-
-- Promotion pointer: `reports/stage_a/promoted_stage_a.json`
-- Checkpoint root: `artifacts/training/stage_a/checkpoints`
-- Tokenizer: `artifacts/tokenizer/tokenizer.json`
-- Output report: `reports/stage_a/stage_a_generation_smoke_test.json`
-- Device and precision: automatically selected
-
-It verifies the complete checkpoint manifest before loading, checks the tokenizer SHA-256 and vocabulary size, strictly loads the saved weights, checks the parameter count and forward-logit shape, rejects NaN/Inf logits, and generates continuations from several fixed prompts.
-
-Use custom prompts by repeating `--prompt`:
+Run the promoted Stage B v2 model:
 
 ```bash
-python scripts/evaluation/check_stage_a_model.py \
-  --prompt "Once upon a time" \
-  --prompt "The human heart pumps" \
+python scripts/evaluation/check_stage_b_v2_model.py
+```
+
+Use custom prompts:
+
+```bash
+python scripts/evaluation/check_stage_b_v2_model.py \
+  --prompt "The human heart pumps blood through" \
+  --prompt "Antibiotic resistance occurs when" \
   --max-new-tokens 80 \
   --temperature 0.8 \
   --top-k 50 \
   --top-p 0.95
 ```
 
-Use greedy decoding for a deterministic forward/generation check:
+Use deterministic greedy decoding with `--temperature 0`. The default report is
+written to
+[`reports/stage_b/v2/stage_b_v2_generation_smoke_test.json`](reports/stage_b/v2/stage_b_v2_generation_smoke_test.json).
+
+The permanent Stage B v2 smoke test passed on CPU/FP32 with four seeded prompts,
+verified all nine checkpoint artifacts, loaded all 35,463,680 parameters, and
+produced finite, decodable continuations. This demonstrates operational inference,
+not factual or clinical quality. Generation currently recomputes the full context
+without a key/value cache and is intended as a verification path rather than a
+production serving stack.
+
+Stage A inference remains available:
 
 ```bash
-python scripts/evaluation/check_stage_a_model.py \
-  --prompt "Scientists study the natural world by" \
-  --max-new-tokens 32 \
-  --temperature 0
+python scripts/evaluation/check_stage_a_model.py
 ```
 
-On Colab, point directly to the verified Drive checkpoint if it has not been copied to the runtime SSD:
+## Installation and quick start
+
+Python 3.11 or newer is required.
 
 ```bash
-python scripts/evaluation/check_stage_a_model.py \
-  --checkpoint /content/drive/MyDrive/medical-slm-runs/stage_a/checkpoints/checkpoint_00007250 \
-  --tokenizer artifacts/tokenizer/tokenizer.json \
-  --output /content/drive/MyDrive/medical-slm-runs/stage_a/stage_a_generation_smoke_test.json
+git clone https://github.com/moshiru00/small-language-model-for-medical-domain.git
+cd small-language-model-for-medical-domain
+python -m venv .venv
 ```
 
-A successful run prints `Stage A model smoke test: PASSED`. Review all generated continuations as a qualitative sanity check, but interpret them as raw next-token completions. Stage A was not instruction-tuned, so it is not expected to follow chat instructions reliably. Fluency is useful evidence that inference works; it is not evidence of medical correctness or safety.
+Activate on Windows PowerShell:
 
-The promoted checkpoint passed this gate on CPU/FP32 with four seeded prompts. The model produced decodable, sentence-like continuations and stopped on EOS where applicable. The samples also contained repetition and medically unreliable phrasing. That combination is expected for an early base model: it confirms that inference is operational while showing why continual medical pretraining, instruction tuning, and factual/safety evaluation remain necessary.
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
 
-The next stage should begin only after the smoke test passes and its JSON report is retained with the Stage A evaluation artifacts.
-
-## Local Stage A commands
-
-Run the one-batch overfitting smoke test:
+Activate on Linux or macOS:
 
 ```bash
+source .venv/bin/activate
+```
+
+Install the package and development dependencies:
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+```
+
+Run the complete regression suite:
+
+```bash
+python -m pytest -q
+```
+
+Verified result at the current repository state:
+
+```text
+387 passed in 15.37s
+```
+
+Targeted coverage includes packed-label alignment, SFT response masking,
+deterministic sampler order, exact batch-cursor resume, scheduler boundaries,
+precision policy, token-weighted evaluation, optimizer grouping, checkpoint
+corruption and compatibility failures, RNG restoration, Drive mirroring, Stage B
+lineage and retention policy, preservation exports, inference identity checks, and
+tiny end-to-end training.
+
+## Training commands
+
+Large training runs require the prepared binary datasets and parent checkpoints,
+which are not stored in Git.
+
+### Stage A
+
+```bash
+# One-batch alignment/overfit test
 python scripts/training/train_stage_a.py \
   --config configs/training_stage_a.yaml \
   --overfit-one-batch \
   --max-updates 10
-```
 
-Run a bounded development training:
-
-```bash
+# Bounded development run
 python scripts/training/train_stage_a.py \
   --config configs/training_stage_a.yaml \
   --max-updates 100
-```
 
-Start the configured Stage A training run:
-
-```bash
+# Full configured run
 python scripts/training/train_stage_a.py \
   --config configs/training_stage_a.yaml
-```
 
-Resume from the latest checkpoint:
-
-```bash
+# Exact resume
 python scripts/training/train_stage_a.py \
   --config configs/training_stage_a.yaml \
   --resume latest
 ```
 
-The training CLI also accepts `--model-config` when a model configuration other than `configs/model_stage_a.yaml` is required.
+### Stage B v2
 
-## Google Colab
+```bash
+# Reproduce the 500-update full-parameter control pilot
+python scripts/training/train_stage_b_v2.py \
+  --config configs/training_stage_b_v2_control.yaml \
+  --max-updates 500
 
-The complete Colab workflow is in [notebooks/colab_stage_a.ipynb](notebooks/colab_stage_a.ipynb). It includes:
+# Resume an interrupted run from its latest verified checkpoint
+python scripts/training/train_stage_b_v2.py \
+  --config configs/training_stage_b_v2_control.yaml \
+  --resume latest
+```
 
-- Repository checkout and installation.
-- Google Drive mounting.
-- Dataset staging on the runtime SSD.
-- Hardware and precision checks.
-- Initial random-validation baseline gate.
-- Development training and checkpoint mirroring.
-- Runtime restart and exact resume test.
-- Self-contained fresh full-run and resume sections.
-- Full validation comparison.
-- One-time held-out test evaluation.
-- Checkpoint integrity verification and promotion.
+The tracked pilot profile is intentionally bounded to 500 updates. The full
+8,033-update experiment used an isolated runtime configuration generated by the
+Stage B v2 Colab notebook, with separate output and Drive-backup directories so a
+pilot could never be mistaken for or overwrite the production run.
 
-Automatic precision should remain enabled when GPU allocation is uncertain. The completed T4 run correctly selected FP16 with a gradient scaler. A compatible GPU with reliable native BF16 support can select BF16 without the scaler.
+Alternative matched-pilot configurations are retained at:
 
-Platform profiles are available at:
+- [`configs/training_stage_b_v2_selective.yaml`](configs/training_stage_b_v2_selective.yaml)
+- [`configs/training_stage_b_v2_selective_l2sp.yaml`](configs/training_stage_b_v2_selective_l2sp.yaml)
 
-- `configs/training_stage_a_colab.yaml`
-- `configs/training_stage_a_runpod.yaml`
+## Cloud execution
 
-## Checkpoints and preservation
+The completed runs used Google Colab Pro with a Tesla T4 and automatic FP16
+selection. The notebooks stage data from Drive onto the runtime SSD, mirror verified
+checkpoints back to Drive, and support recovery after runtime disconnection.
 
-The promoted checkpoint is expected locally at:
+- [Stage A Colab notebook](notebooks/colab_stage_a.ipynb)
+- [Stage B v1 Colab notebook](notebooks/colab_stage_b.ipynb)
+- [Stage B v2 self-contained notebook](notebooks/colab_stage_b_v2.ipynb)
+- [Stage B v2 Colab pilot guide](reports/stage_b/v2/COLAB_PILOT_GUIDE.md)
+
+Stage A also provides Colab and RunPod profiles:
+
+- [`configs/training_stage_a_colab.yaml`](configs/training_stage_a_colab.yaml)
+- [`configs/training_stage_a_runpod.yaml`](configs/training_stage_a_runpod.yaml)
+
+## Artifact preservation and reproducibility
+
+### Promoted identities
+
+| Artifact | Stage A parent | Stage B v2 promoted |
+|---|---|---|
+| Checkpoint | `checkpoint_00007250` | `checkpoint_00008000` |
+| Model SHA-256 | `2443cb5875c11e9c0c027ead53d4f9adab099e0cd4b19fd47fe08181b0640423` | `799fe9c34648044d21bf73258cd55a46716167f89dcf64e2c0487e0382d65c14` |
+| Checkpoint manifest SHA-256 | `a7e132692f31b505b7d7db9fa7e6d773d5c006904fa0d774edb1ba6c7f0408a4` | `ea60b0d6b66ea3bd1987f9ff7bbdd75ba34bc0f05b7c21349ad6ef90615a9b71` |
+| Tokenizer SHA-256 | `6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e` | Same tokenizer |
+
+The Stage B v2 lineage embeds the exact Stage A parent model, checkpoint manifest,
+and tokenizer hashes, plus train, medical-validation, and general-validation
+manifest hashes.
+
+### Preservation policy
+
+| Asset | Storage policy |
+|---|---|
+| Source code, configs, tests, reports, pointers | Commit to Git |
+| Tokenized shards and raw/intermediate datasets | External storage; excluded from Git |
+| Full resumable checkpoints | Local protected artifacts plus durable cloud storage |
+| Preservation archives | External storage with adjacent SHA-256 record |
+
+The Stage B v2 preservation archive contains the promoted update-8,000 checkpoint,
+the final update-8,033 checkpoint, metrics, configs, tokenizer, manifests, and reports.
+It is **853,012,480 bytes** with SHA-256:
 
 ```text
-artifacts/training/stage_a/checkpoints/checkpoint_00007250
+b5e4f75623d1af74dd825c873d549109bd9ad42e0d150cfffc279f0dd9c64263
 ```
 
-It contains model, optimizer, scheduler, scaler, RNG, configuration, environment, metrics, and trainer-state artifacts plus a SHA-256 manifest. The local copy was audited successfully: all nine declared artifacts passed size and hash verification, and its tokenizer and dataset-manifest compatibility hashes matched the project files.
+All 41 inventoried files and both preserved checkpoints passed size and hash
+verification after local extraction.
 
-Checkpoint binaries are excluded from Git because the promoted checkpoint is approximately 406 MiB. Keep both of these checkpoints in durable external storage:
+Exact cross-machine numerical identity still depends on compatible PyTorch, CUDA,
+GPU kernels, and deterministic backend behavior. The saved state supports exact
+continuation in a compatible environment; it does not promise bitwise equality
+across arbitrary hardware stacks.
 
-- `checkpoint_00007250` — promoted best-validation model.
-- `checkpoint_00007310` — exact final end-of-epoch state.
+## Repository layout
 
-The small JSON and Markdown files under `reports/stage_a/` should be committed to preserve the experiment record.
-
-| Artifact | Role | Git policy |
-|---|---|---|
-| `checkpoint_00007250` | Promoted best-validation checkpoint | External durable storage; excluded from Git |
-| `checkpoint_00007310` | Exact final end-of-epoch checkpoint | External durable storage; excluded from Git |
-| `reports/stage_a/stage_a_evaluation.json` | Machine-readable final evaluation | Commit |
-| `reports/stage_a/promoted_stage_a.json` | Machine-readable promotion pointer | Commit |
-| `reports/stage_a/stage_a_generation_smoke_test.json` | Post-training inference evidence | Commit |
-| `reports/stage_a/STAGE_A_IMPLEMENTATION_AND_TRAINING_REPORT.md` | Full experiment record | Commit |
-
-Do not retain only `model.pt` if exact resume matters. Optimizer, scheduler, scaler, RNG, trainer-state, configuration, and manifest files are all part of the resumable checkpoint contract.
-
-## Reproducibility snapshot
-
-The promoted checkpoint records the following run identity:
-
-| Property | Recorded value |
-|---|---|
-| Checkpoint | `checkpoint_00007250` |
-| Seed | 42 |
-| GPU | Tesla T4 |
-| Precision | FP16 with gradient scaler |
-| Python | 3.12.13 |
-| PyTorch | 2.11.0+cu128 |
-| CUDA runtime | 12.8 |
-| Dataset-manifest SHA-256 | `ac5f8111b861c5665e3ee98e548c1813a793b6bcb245293150317ee1fae39c7c` |
-| Tokenizer SHA-256 | `6c569241e2d166cfba709d8d260cdcbdd6b0907ce45dfa644e0426f1aecb078e` |
-
-Exact numerical reproduction still depends on compatible hardware, CUDA/PyTorch kernels, package versions, and deterministic behavior of the selected backend. The saved RNG states and explicit batch cursor support exact continuation in a compatible environment; they do not guarantee bit-identical results across arbitrary hardware or software stacks.
-
-## Tokenizer comparison
-
-The project trains a custom GPT-2-style ByteLevel BPE tokenizer and provides utilities to compare it with the original GPT-2 tokenizer. Comparison metrics include:
-
-- Vocabulary size and utilization.
-- Total token count.
-- Tokens per word.
-- Characters and bytes per token.
-- Unknown-token rate.
-- Document sequence lengths.
-- Medical-term fragmentation.
-
-Tokenizer tooling is located under `scripts/tokenizer/` and `src/medical_slm/tokenizer/`.
-
-## Stage B continual pretraining
-
-Stage B v1 completed one epoch and exposed substantial catastrophic forgetting despite improving medical validation. Stage B v2 subsequently completed and promoted validation-selected `checkpoint_00008000`: medical validation loss 3.135652, general validation loss 3.348985, medical test loss 3.162896, and general test loss 3.691913. This is a continued-pretraining base model, not a clinically safe assistant.
-
-The promoted Stage A checkpoint is a pretraining baseline, not a deployable medical assistant.
-
-### Stage B data readiness
-
-The Stage B data foundation is now prepared and verified:
-
-- 224,120,320 effective training targets across 875,470 packed sequences.
-- 82.22% medical data and 17.78% general rehearsal data.
-- Zero document overlap with Stage A.
-- Separate medical validation and sealed medical test splits.
-- Zero overlap among either training stage, medical validation, and medical test.
-- All 109 new binary shards passed SHA-256 verification.
-
-See [Stage B Data Preparation Report](reports/stage_b/DATA_PREPARATION_REPORT.md) for exact source allocations, hashes, provenance, and audit results.
-
-### Stage B training system
-
-The continual-pretraining trainer is implemented and has passed its real parent-initialization gate. It:
-
-- Verifies the complete promoted Stage A checkpoint.
-- Loads only model weights from `checkpoint_00007250`.
-- Starts a fresh optimizer, scheduler, precision scaler, RNG progression, and training state.
-- Records parent model/checkpoint hashes in every Stage B checkpoint.
-- Establishes medical-adaptation and general-retention baselines before training.
-- Selects the best medical checkpoint subject to a 5% general-loss degradation ceiling.
-- Writes `best_medical`, `best_eligible`, `latest`, milestone, and `final_stage_b` pointers.
-- Supports exact Stage B interruption and resume.
-
-Verify model-only initialization without evaluation or training:
-
-```bash
-python scripts/training/train_stage_b.py --verify-initialization-only
+```text
+configs/                   Model, corpus, platform, and experiment configurations
+datasets/                  Generated corpora and packed shards; mostly Git-ignored
+notebooks/                 Self-contained Colab training and recovery workflows
+reports/
+  stage_a/                 Stage A evaluation, promotion, and inference evidence
+  stage_b/v1/              Catastrophic-forgetting comparison experiment
+  stage_b/v2/              V2 plan, audits, evaluation, promotion, and preservation
+  comparisons/             Cross-experiment adaptation registry
+scripts/
+  assembly/                Corpus construction and overlap audits
+  artifacts/               Preservation export and verification
+  evaluation/              Promoted-model inference gates
+  training/                Stage A, Stage B v1, and Stage B v2 entry points
+  tokenizer/               Tokenizer train/evaluate/compare utilities
+src/medical_slm/
+  data/                    Standardization, filtering, deduplication, packing, SFT
+  inference/               Autoregressive decoding
+  model/                   Transformer architecture
+  tokenizer/               Tokenizer implementation and metrics
+  training/                Loss, sampler, optimizer, scheduler, trainer, checkpoints
+tests/                     Unit, regression, and tiny end-to-end tests
 ```
 
-Evaluate the untouched Stage A model on medical and general validation:
+## Experiment records
 
-```bash
-python scripts/training/train_stage_b.py --baseline-only
-```
+- [Stage A implementation and training report](reports/stage_a/STAGE_A_IMPLEMENTATION_AND_TRAINING_REPORT.md)
+- [Stage A final evaluation](reports/stage_a/stage_a_evaluation.json)
+- [Stage B training-system report](reports/stage_b/TRAINING_SYSTEM_REPORT.md)
+- [Stage B v1 experiment report](reports/stage_b/v1/EXPERIMENT_REPORT.md)
+- [Stage B v2 experiment plan](reports/stage_b/v2/EXPERIMENT_PLAN.md)
+- [Stage B v2 final report](reports/stage_b/v2/EXPERIMENT_REPORT.md)
+- [Stage B v2 evaluation](reports/stage_b/v2/stage_b_v2_evaluation.json)
+- [Promoted Stage B v2 pointer](reports/stage_b/v2/promoted_stage_b_v2.json)
+- [Continual-adaptation comparison registry](reports/comparisons/continual_adaptation_registry.json)
 
-Run a short alignment diagnostic:
+## Limitations and next work
 
-```bash
-python scripts/training/train_stage_b.py \
-  --overfit-one-batch \
-  --max-updates 10
-```
+- Perplexity measures next-token prediction, not medical truthfulness or safety.
+- The 35.5M-parameter model has limited capacity and should not be compared directly
+  with production-scale medical LLMs.
+- Generation is raw causal completion; the model has not undergone instruction
+  tuning, preference optimization, retrieval augmentation, or clinical calibration.
+- Evaluation currently emphasizes held-out language-model loss rather than medical
+  QA accuracy, hallucination rate, calibration, bias, privacy, or adversarial safety.
+- The known test sets are sealed from all future tuning decisions; new untouched
+  benchmarks will be required for repeated model-development comparisons.
+- The next controlled experiment is LoRA continual adaptation from the same Stage A
+  parent, using the same validation contract. SFT should follow only after selecting
+  the adaptation strategy.
 
-Run a bounded development training:
+The project demonstrates a reproducible training and experimentation system for a
+small domain language model. It does **not** claim that the resulting checkpoint is a
+medical expert or a deployable assistant.
 
-```bash
-python scripts/training/train_stage_b.py --max-updates 50
-```
+## License
 
-Resume a Stage B development or full run:
-
-```bash
-python scripts/training/train_stage_b.py --resume latest
-```
-
-Platform profiles are available at:
-
-- `configs/training_stage_b.yaml`
-- `configs/training_stage_b_colab.yaml`
-- `configs/training_stage_b_runpod.yaml`
-
-See [Stage B Training System Report](reports/stage_b/TRAINING_SYSTEM_REPORT.md) for initialization, lineage, dual-validation, promotion, and test details.
-
-For the complete Colab workflow, use [notebooks/colab_stage_b.ipynb](notebooks/colab_stage_b.ipynb) and follow the [Stage B Colab Baseline Guide](reports/stage_b/COLAB_BASELINE_GUIDE.md). The notebook includes the zero-update baseline, development run, 50-to-100 resume test, standalone fresh full run, standalone interrupted-run resume, and final-state verification. Development and full checkpoints use separate Drive directories. The upload-ready `stage-b-data.tar` archive is generated locally and excluded from Git.
-
-Stage B v1 has now completed one full epoch and is retained as a comparison experiment rather than a final medical model. Its full endpoint improved medical validation while causing substantial general-domain forgetting. Before Stage B v2 or LoRA work, preserve its protected checkpoints and metrics using [the v1 preservation workflow](reports/stage_b/v1/PRESERVATION_AND_COMPARISON.md). The tracked [continual-adaptation registry](reports/comparisons/continual_adaptation_registry.json) defines the common comparison contract for the Stage A parent, full continual-pretraining variants, and future LoRA adapters.
-
-### Stage B v2 retention-aware result
-
-V2 used a verified Stage-A-disjoint 70/30 medical/general corpus containing 263,202,304 supervised tokens in 1,028,134 packed sequences. Three matched pilots selected lower-learning-rate full-parameter training over selective freezing and selective freezing plus L2-SP. The completed 8,033-update run selected update 8,000 using validation only; its 16.25% general-validation perplexity degradation remained inside the preferred 20% budget while medical-validation perplexity improved from 32.06 to 23.00. The guarded one-time test produced medical perplexity 23.64 and general perplexity 40.12. LoRA remains a planned comparison and its tuning must not use these now-known test results.
-
-Use [the Stage B v2 experiment plan](reports/stage_b/v2/EXPERIMENT_PLAN.md), [Colab pilot guide](reports/stage_b/v2/COLAB_PILOT_GUIDE.md), and [self-contained Colab notebook](notebooks/colab_stage_b_v2.ipynb). The notebook includes archive and parent verification, automatic FP16/BF16 selection, the zero-update baseline, one-batch alignment, isolated pilot directories, exact pilot/full resume, atomic checkpoint-time metrics mirroring, standalone fresh/resume full-run cells, validation-only final checkpoint selection, and guarded one-time medical/general test evaluation.
-
-The final evidence and promotion decision are recorded in [the Stage B v2 experiment report](reports/stage_b/v2/EXPERIMENT_REPORT.md) and its adjacent machine-readable JSON artifacts. The selected binary checkpoint is verified in Drive and still requires local preservation.
+See [`LICENSE`](LICENSE). Dataset licenses and inclusion decisions are tracked
+separately by the data-policy pipeline; the repository license does not override the
+license of any upstream dataset.

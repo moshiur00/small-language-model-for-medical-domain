@@ -50,7 +50,7 @@
       "method": "retention_aware_full_continual_pretraining",
       "parent": "stage_a_parent",
       "promotion_eligible": true,
-      "status": "complete_drive_checkpoint_pending_local_preservation",
+      "status": "complete_preserved_locally_and_in_drive",
       "training_tokens": 262144000
     },
     {

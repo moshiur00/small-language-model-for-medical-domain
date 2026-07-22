@@ -101,3 +101,5 @@ stage_b_v1.tar
 stage_b_v1.tar.sha256
 stage-b-v2-data.tar
 stage-b-v2-data.tar.sha256
+stage_b_v2_preservation.tar.sha256
+stage_b_v2_preservation.tar

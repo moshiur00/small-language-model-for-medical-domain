@@ -2,7 +2,7 @@
 
 **Experiment status:** Complete and validation-selected  
 **Selected checkpoint:** `checkpoint_00008000`  
-**Physical checkpoint status:** Verified in Google Drive; local preservation pending  
+**Physical checkpoint status:** Verified and preserved locally and in Google Drive
 **Medical/general test status:** Evaluated once after validation-only selection  
 **Parent:** Stage A `checkpoint_00007250`
 
@@ -104,12 +104,42 @@ The promotion is for subsequent model-development stages. It does not imply
 medical factuality, clinical safety, instruction-following ability, or fitness
 for patient care.
 
+## Post-training inference gate
+
+The promoted checkpoint was exercised through the repository-native inference
+command:
+
+```bash
+python scripts/evaluation/check_stage_b_v2_model.py
+```
+
+Before loading weights, the command verifies the complete checkpoint manifest,
+the Stage B v2 lineage, the validation-only promotion guard, and the checkpoint,
+model, and tokenizer hashes recorded in the final evaluation. It then strictly
+loads all model parameters, checks the tokenizer vocabulary and required special
+tokens, rejects non-finite logits, enforces the 1,024-token context window, and
+runs seeded autoregressive generation.
+
+The permanent smoke test ran on CPU/FP32 with seed 42, temperature 0.8, top-k 50,
+top-p 0.95, four medical/general prompts, and eight new tokens per prompt. It
+verified all nine checkpoint artifacts, loaded 35,463,680 parameters, produced
+finite logits with the expected 16,000-token vocabulary dimension, and generated
+non-empty decodable continuations for every prompt. The complete regression suite
+after adding this gate passed with 387 tests.
+
+The samples show that the checkpoint performs operational next-token inference
+and has learned medical-domain language. They also contain redundancy and
+incomplete claims. This is expected for a continued-pretraining base model and is
+not evidence of instruction following, factual reliability, diagnostic ability,
+or clinical safety. Generated text must not be used for medical decisions.
+
 ## Preserved reports
 
 - `stage_b_v2_evaluation.json`: complete validation selection and test results.
 - `promoted_stage_b_v2.json`: promotion pointer and provenance.
 - `stage_b_v2_test_evaluation_status.json`: durable one-time-test completion record.
 - `stage_b_v2_candidate_validation.json`: retained in the Drive run directory.
+- `stage_b_v2_generation_smoke_test.json`: verified post-training inference evidence.
 
 The full binary checkpoint remains under:
 
@@ -117,8 +147,11 @@ The full binary checkpoint remains under:
 MyDrive/medical-slm-runs/stage_b_v2/full/checkpoints/checkpoint_00008000/
 ```
 
-It must be exported and verified locally before the Drive copy can be treated as
-fully preserved.
+The promoted and final checkpoints were exported together with all supporting
+contracts and reports. The 853,012,480-byte archive has SHA-256
+`b5e4f75623d1af74dd825c873d549109bd9ad42e0d150cfffc279f0dd9c64263`.
+After local extraction, all 41 inventoried files and both complete checkpoints
+passed verification under `artifacts/training/stage_b_v2`.
 
 ## Next experiments
 
