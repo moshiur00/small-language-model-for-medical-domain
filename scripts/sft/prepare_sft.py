@@ -16,9 +16,12 @@ def main() -> None:
     parser.add_argument("--config", type=Path, default=Path("configs/data.yaml"))
     arguments = parser.parse_args()
     config = yaml.safe_load(arguments.config.read_text(encoding="utf-8"))
-    sft_config = config.get("sft_preparation")
+    if not isinstance(config, dict):
+        raise ValueError("SFT configuration root must be a mapping.")
+    nested = config.get("sft_preparation")
+    sft_config = nested if nested is not None else config
     if not isinstance(sft_config, dict):
-        raise ValueError("Configuration must contain 'sft_preparation'.")
+        raise ValueError("'sft_preparation' must be a mapping.")
     manifest = prepare_sft_dataset(sft_config)
     print(json.dumps(manifest, indent=2))
 

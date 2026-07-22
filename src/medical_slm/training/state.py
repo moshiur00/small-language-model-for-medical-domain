@@ -26,6 +26,11 @@ class TrainingState:
     latest_general_validation_loss: float | None = None
     best_preferred_medical_loss: float | None = None
     consecutive_emergency_retention_breaches: int = 0
+    latest_medical_validation_loss: float | None = None
+    best_sft_validation_loss: float | None = None
+    best_eligible_sft_loss: float | None = None
+    best_preferred_sft_loss: float | None = None
+    consecutive_sft_validation_non_improvements: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable state dictionary."""

@@ -3,7 +3,7 @@
 **A 35.5M-parameter decoder-only Transformer built and trained from scratch, then
 adapted to medical text with retention-aware continual pretraining.**
 
-`Python 3.11+` · `PyTorch` · `Custom 16K BPE tokenizer` · `387 tests` ·
+`Python 3.11+` · `PyTorch` · `Custom 16K BPE tokenizer` · `396 tests` ·
 `Deterministic resume` · `Colab/RunPod workflows`
 
 This portfolio project implements the complete path from raw text to a promoted
@@ -29,7 +29,7 @@ autoregressive inference.
 | Stage B v2 retention-aware pretraining | **Complete and promoted** | Checkpoint `00008000` improved medical validation while remaining inside the declared retention band |
 | Stage B v2 inference gate | **Passed** | Checkpoint identity, lineage, tokenizer compatibility, finite logits, and generation verified |
 | LoRA comparison | Planned | Must use the same Stage A parent and validation-only selection contract |
-| Supervised fine-tuning | Infrastructure prepared, training not started | Separate response-masked causal-loss path implemented |
+| Stage C supervised fine-tuning | Dataset v1 rebuilt and verified; training not started | 6,967 examples in grouped train/validation/sealed-test splits |
 
 The current promoted domain-adapted model is **Stage B v2
 `checkpoint_00008000`**. Its full checkpoint is preserved locally and in Google
@@ -230,26 +230,86 @@ Detailed data evidence:
 - [Corpus verification](reports/stage_b/v2/corpus_verification.json)
 - [Stage B data-preparation report](reports/stage_b/DATA_PREPARATION_REPORT.md)
 
+## Stage C supervised instruction data
+
+Stage C v1 uses only the existing balanced seven-source instruction pool. The
+corrected builder preserved instructions during truncation, rejected 33 invalid or
+overlength examples, and produced 6,248 train, 369 validation, and 350 sealed test
+examples. All tensor and structured artifacts match their manifest hashes, with zero
+record-ID or normalized prompt-group overlap across splits. Cross-source near-
+duplicate analysis found no cross-source or cross-split leakage. The dataset is
+approved for internal research training. Public checkpoint release remains blocked
+because 2,999 examples carry noncommercial or manual-review license metadata.
+
+- [Stage C dataset specification](reports/stage_c/DATASET_SPECIFICATION.md)
+- [Stage C experiment plan](reports/stage_c/EXPERIMENT_PLAN.md)
+- [Stage C duplicate and license audit](reports/stage_c/stage_c_data_audit.json)
+
 ## Training system
+
+Stage C now has a dedicated response-only SFT path. It loads only model weights
+from the promoted Stage B v2 checkpoint, creates fresh optimizer/scheduler/scaler
+state, crops each fixed-width batch to its longest active sequence, and normalizes
+the accumulated gradient by the total number of supervised response tokens. Prompt
+and padding labels remain `-100`; the SFT loss performs exactly one standard causal
+shift. The trainer never loads the sealed SFT test split during training or
+selection.
+
+The Stage C runtime evaluates three validation distributions every 25 updates:
+response-only SFT validation, medical language-model retention, and general
+language-model retention. Preferred and hard perplexity bands are 10% and 15% for
+both retention distributions. Checkpoints preserve exact batch position, complete
+RNG state, parent/model/tokenizer/dataset identity, and FP16 scaler state. The
+canonical profile is 4 examples per micro-batch, 8-way accumulation, 3 epochs, and
+588 optimizer updates.
+
+Stage C entry points:
+
+```powershell
+# Verify parent loading and fresh optimization state
+python scripts/training/train_stage_c_sft.py --verify-initialization-only
+
+# Record the zero-update SFT/medical/general baselines
+python scripts/training/train_stage_c_sft.py --baseline-only
+
+# Confirm response-mask alignment on one repeated batch
+python scripts/training/train_stage_c_sft.py --overfit-one-batch --max-updates 10
+
+# Run or exactly resume training
+python scripts/training/train_stage_c_sft.py
+python scripts/training/train_stage_c_sft.py --resume latest
+```
+
+For Colab, create and upload the deterministic data bundle together with its
+generated SHA-256 sidecar:
+
+```powershell
+python scripts/artifacts/create_stage_c_data_archive.py
+```
+
+Then open [the Stage C Colab notebook](notebooks/colab_stage_c_sft.ipynb). It
+contains focused regression and initialization checks, the zero-update triple
+baseline, one-batch response-mask verification, matched `1e-5`/`2e-5` pilots,
+validation-only pilot selection, and standalone fresh/resume full-run cells.
 
 ### Optimization
 
-| Setting | Stage A | Stage B v2 |
-|---|---:|---:|
-| Initialization | Random | Stage A model weights |
-| Optimizer | AdamW | AdamW |
-| Peak learning rate | `3e-4` | `4e-5` |
-| Final learning rate | `3e-5` | `4e-6` |
-| Betas | `(0.9, 0.95)` | `(0.9, 0.95)` |
-| Weight decay | 0.1 | 0.05 |
-| Schedule | Linear warmup + cosine | Linear warmup + cosine |
-| Warmup updates | 73 | 161 |
-| Micro-batch | 16 sequences | 16 sequences |
-| Gradient accumulation | 8 | 8 |
-| Nominal global batch | 32,768 tokens | 32,768 tokens |
-| Gradient clipping | 1.0 | 1.0 |
-| Precision on completed T4 runs | FP16 + GradScaler | FP16 + GradScaler |
-| Epochs | 1 | 1 |
+| Setting | Stage A | Stage B v2 | Stage C SFT v1 |
+|---|---:|---:|---:|
+| Initialization | Random | Stage A weights | Stage B v2 weights |
+| Optimizer | AdamW | AdamW | AdamW |
+| Peak learning rate | `3e-4` | `4e-5` | `1e-5` baseline |
+| Final learning rate | `3e-5` | `4e-6` | `1e-6` |
+| Betas | `(0.9, 0.95)` | `(0.9, 0.95)` | `(0.9, 0.95)` |
+| Weight decay | 0.1 | 0.05 | 0.01 |
+| Schedule | Warmup + cosine | Warmup + cosine | Warmup + cosine |
+| Warmup updates | 73 | 161 | 30 |
+| Micro-batch | 16 sequences | 16 sequences | 4 examples |
+| Gradient accumulation | 8 | 8 | 8 |
+| Nominal global batch | 32,768 tokens | 32,768 tokens | 32 examples |
+| Gradient clipping | 1.0 | 1.0 | 1.0 |
+| Precision on T4 | FP16 + scaler | FP16 + scaler | FP16 + scaler |
+| Epochs | 1 | 1 | Up to 3 |
 
 BF16 is selected automatically on compatible hardware; FP16 uses a saved gradient
 scaler, and CPU execution falls back to FP32.
@@ -385,7 +445,7 @@ python -m pytest -q
 Verified result at the current repository state:
 
 ```text
-387 passed in 15.37s
+396 passed in 11.33s
 ```
 
 Targeted coverage includes packed-label alignment, SFT response masking,
@@ -553,9 +613,9 @@ tests/                     Unit, regression, and tiny end-to-end tests
   QA accuracy, hallucination rate, calibration, bias, privacy, or adversarial safety.
 - The known test sets are sealed from all future tuning decisions; new untouched
   benchmarks will be required for repeated model-development comparisons.
-- The next controlled experiment is LoRA continual adaptation from the same Stage A
-  parent, using the same validation contract. SFT should follow only after selecting
-  the adaptation strategy.
+- The next active experiment is full-parameter Stage C supervised instruction fine-
+  tuning from the promoted Stage B v2 checkpoint. A later LoRA run remains planned as
+  a controlled parameter-efficient comparison.
 
 The project demonstrates a reproducible training and experimentation system for a
 small domain language model. It does **not** claim that the resulting checkpoint is a

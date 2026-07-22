@@ -8,6 +8,7 @@ from medical_slm.training.config import (
     StageATrainingConfig,
     StageBTrainingConfig,
     StageBV2TrainingConfig,
+    StageCSFTTrainingConfig,
 )
 
 
@@ -61,4 +62,21 @@ def test_stage_b_v2_converts_yaml_layer_list_and_rejects_bad_bands() -> None:
         StageBV2TrainingConfig(
             preferred_general_perplexity_degradation_fraction=0.30,
             maximum_general_perplexity_degradation_fraction=0.20,
+        )
+
+
+def test_stage_c_defaults_encode_response_sft_without_test_selection() -> None:
+    config = StageCSFTTrainingConfig()
+    assert config.train_directory.endswith("sft_stage_c_v1/train")
+    assert config.validation_directory.endswith("sft_stage_c_v1/validation")
+    assert all("test" not in key for key in config.to_dict())
+    assert config.total_updates == 588
+    assert config.learning_rate == 1e-5
+
+
+def test_stage_c_rejects_inverted_retention_bands() -> None:
+    with pytest.raises(ValueError, match="medical retention"):
+        StageCSFTTrainingConfig(
+            preferred_medical_perplexity_degradation_fraction=0.2,
+            maximum_medical_perplexity_degradation_fraction=0.1,
         )
