@@ -1,6 +1,6 @@
 # Stage C v1 Supervised Instruction Fine-Tuning Plan
 
-**Status:** Training system implemented; execution gates pending
+**Status:** Full training complete; validation-only final selection pending
 **Method:** Full-parameter response-only supervised instruction fine-tuning  
 **Parent:** Stage B v2 `checkpoint_00008000`  
 **Selection:** Validation only, subject to medical and general retention gates
@@ -124,7 +124,9 @@ Perplexity and generated examples do not establish factuality or clinical safety
 5. ~~Implement Stage C configuration, lineage, checkpoints, and exact resume.~~ Complete.
 6. ~~Add regression tests and a self-contained Colab notebook.~~ Complete; runtime
    gates remain to be executed on Colab.
-7. Run the zero-update and one-batch gates.
-8. Run matched learning-rate pilots.
-9. Lock and execute the full run.
+7. ~~Run the zero-update and one-batch gates.~~ Complete.
+8. ~~Run matched learning-rate pilots.~~ Complete; `2e-5` won inside both
+   preferred retention bands at update 125.
+9. ~~Lock and execute the full run.~~ Complete: 588 updates, 3 epochs, no safety
+   or early stop; best preferred SFT loss `3.0790578928403876`.
 10. Select on validation, open test once, promote, preserve, and add inference.

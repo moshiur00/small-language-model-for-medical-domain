@@ -50,6 +50,16 @@ def test_stage_c_selection_never_reads_sealed_test_data() -> None:
     assert "evaluation_medical/test" not in selection
     assert "datasets/tokenized/evaluation/test" not in selection
 
+    final_selection = next(
+        source
+        for source in code_cells()
+        if "STAGE C VALIDATION-ONLY SELECTION: VERIFIED" in source
+    )
+    assert "select_stage_c_checkpoint.py" in final_selection
+    assert "sft_stage_c_v1/test" not in final_selection
+    assert "evaluation_medical/test" not in final_selection
+    assert "datasets/tokenized/evaluation/test" not in final_selection
+
 
 def test_stage_c_full_start_and_resume_are_standalone() -> None:
     notebook_cells = cells()
