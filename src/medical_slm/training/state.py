@@ -27,6 +27,7 @@ class TrainingState:
     best_preferred_medical_loss: float | None = None
     consecutive_emergency_retention_breaches: int = 0
     latest_medical_validation_loss: float | None = None
+    sft_validation_baseline_loss: float | None = None
     best_sft_validation_loss: float | None = None
     best_eligible_sft_loss: float | None = None
     best_preferred_sft_loss: float | None = None

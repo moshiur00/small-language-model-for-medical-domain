@@ -16,7 +16,11 @@ from medical_slm.model import DecoderConfig, DecoderModel
 from medical_slm.training.checkpoint import save_checkpoint, verify_checkpoint
 from medical_slm.training.config import StageCSFTTrainingConfig
 from medical_slm.training.precision import resolve_precision
-from medical_slm.training.sft_evaluation import evaluate_masked_sft
+from medical_slm.training.evaluation import EvaluationResult
+from medical_slm.training.sft_evaluation import (
+    SFTEvaluationResult,
+    evaluate_masked_sft,
+)
 from medical_slm.training.sft_step import run_sft_optimizer_update
 from medical_slm.training.sft_trainer import StageCSFTTrainer
 from medical_slm.training.state import TrainingState
@@ -233,3 +237,61 @@ def test_stage_c_trains_checkpoints_and_resumes_exact_cursor(tmp_path: Path) -> 
     assert final.epoch == 2
     assert final.batch_cursor == 0
     assert final.consumed_micro_batches == 4
+
+
+def test_stage_c_can_reenter_preferred_band_after_unrestricted_best(
+    tmp_path: Path, monkeypatch
+) -> None:
+    config, model_config = tiny_setup(tmp_path)
+    trainer = StageCSFTTrainer(config, model_config)
+
+    def sft_result(loss: float) -> SFTEvaluationResult:
+        return SFTEvaluationResult(
+            loss=loss,
+            perplexity=float(torch.exp(torch.tensor(loss))),
+            response_token_accuracy=0.1,
+            tokens=11,
+            samples=4,
+            batches=2,
+            duration_seconds=0.01,
+        )
+
+    def packed_result(loss: float) -> EvaluationResult:
+        return EvaluationResult(
+            loss=loss,
+            perplexity=float(torch.exp(torch.tensor(loss))),
+            tokens=16,
+            samples=4,
+            batches=2,
+            duration_seconds=0.01,
+        )
+
+    sft_results = iter((sft_result(4.0), sft_result(2.0), sft_result(2.5)))
+    packed_results = iter((
+        packed_result(3.0),
+        packed_result(3.0),
+        packed_result(3.0 + torch.log(torch.tensor(1.20)).item()),
+        packed_result(3.0),
+        packed_result(3.0 + torch.log(torch.tensor(1.05)).item()),
+        packed_result(3.0),
+    ))
+    monkeypatch.setattr(
+        "medical_slm.training.sft_trainer.evaluate_masked_sft",
+        lambda **_: next(sft_results),
+    )
+    monkeypatch.setattr(
+        "medical_slm.training.sft_trainer.evaluate_shifted_packed",
+        lambda **_: next(packed_results),
+    )
+    try:
+        trainer.evaluate()
+        trainer.state.update = 1
+        trainer.evaluate()
+        assert trainer.state.best_sft_validation_loss == 2.0
+        assert trainer.state.best_preferred_sft_loss is None
+        trainer.state.update = 2
+        trainer.evaluate()
+        assert trainer.state.best_sft_validation_loss == 2.0
+        assert trainer.state.best_preferred_sft_loss == 2.5
+    finally:
+        trainer.metric_logger.close()
