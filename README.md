@@ -3,7 +3,7 @@
 **A 35.5M-parameter decoder-only Transformer built and trained from scratch, then
 adapted to medical text with retention-aware continual pretraining.**
 
-`Python 3.11+` · `PyTorch` · `Custom 16K BPE tokenizer` · `396 tests` ·
+`Python 3.11+` · `PyTorch` · `Custom 16K BPE tokenizer` · `400+ regression tests` ·
 `Deterministic resume` · `Colab/RunPod workflows`
 
 This portfolio project implements the complete path from raw text to a promoted
@@ -14,8 +14,8 @@ pretraining experiments, dual-domain evaluation, artifact preservation, and
 autoregressive inference.
 
 > [!WARNING]
-> This is a research base model, not a clinical system. It is not instruction-tuned
-> and has not been validated for medical factuality, diagnosis, treatment advice,
+> This is a research model, not a clinical system. Its Stage C instruction tuning
+> has not been validated for medical factuality, diagnosis, treatment advice,
 > patient safety, or real-world clinical use. Generated text must not be used for
 > medical decisions.
 
@@ -29,11 +29,12 @@ autoregressive inference.
 | Stage B v2 retention-aware pretraining | **Complete and promoted** | Checkpoint `00008000` improved medical validation while remaining inside the declared retention band |
 | Stage B v2 inference gate | **Passed** | Checkpoint identity, lineage, tokenizer compatibility, finite logits, and generation verified |
 | LoRA comparison | Planned | Must use the same Stage A parent and validation-only selection contract |
-| Stage C supervised fine-tuning | Dataset v1 rebuilt and verified; training not started | 6,967 examples in grouped train/validation/sealed-test splits |
+| Stage C supervised fine-tuning | **Complete; dual profiles evaluated** | Specialist checkpoint `00000588` improved all seven sealed-test sources; balanced checkpoint `00000125` retained as comparator |
 
-The current promoted domain-adapted model is **Stage B v2
-`checkpoint_00008000`**. Its full checkpoint is preserved locally and in Google
-Drive; large binary artifacts are intentionally excluded from Git.
+The current instruction model is Stage C's **medical-instruction specialist
+`checkpoint_00000588`**, with balanced-retention `checkpoint_00000125` retained as
+an explicit comparator. Both descend from promoted Stage B v2 `checkpoint_00008000`.
+Large binary artifacts are preserved outside Git with cryptographic manifests.
 
 ## Results at a glance
 
@@ -72,6 +73,20 @@ Checkpoint selection used validation data only. Medical and general test splits
 were opened once after the selected checkpoint was fixed. Those test results are now
 known and must not be used to tune future LoRA or SFT experiments.
 
+### Stage C instruction-tuning results
+
+| Profile | Checkpoint | SFT test loss | SFT test PPL | Response-token accuracy | Role |
+|---|---:|---:|---:|---:|---|
+| Balanced retention | 125 | 3.120167 | 22.650 | 42.79% | Preferred-band comparator |
+| **Medical instruction specialist** | **588** | **2.879608** | **17.807** | **46.34%** | **Primary profile** |
+
+The primary specialist was registered before sealed-test access. Relative to the
+balanced profile, it reduced sealed SFT perplexity by **21.38%**, improved response-
+token accuracy by **3.55 percentage points**, and improved all seven constituent
+sources. The balanced model remains available because it has better packed medical
+and general retention. Test results report this tradeoff; they did not choose the
+profiles.
+
 ## What this project demonstrates
 
 - A decoder-only Transformer implemented directly in PyTorch rather than delegated
@@ -108,7 +123,10 @@ flowchart LR
     I --> J[Retention-aware full run]
     J --> K[Medical + general validation]
     K --> L[Promote checkpoint 00008000]
-    L --> M[Integrity and inference gates]
+    L --> M[Stage C response-only SFT]
+    M --> N[Register balanced + specialist]
+    N --> O[One-time sealed test]
+    O --> P[Promote, preserve, infer]
 ```
 
 The same model architecture and tokenizer are retained across Stage A and Stage B.
@@ -280,6 +298,22 @@ python scripts/training/train_stage_c_sft.py
 python scripts/training/train_stage_c_sft.py --resume latest
 ```
 
+After the immutable dual-profile promotion has been written, inference verifies the
+selected profile's identity and reproduces the exact Stage C prompt template:
+
+```powershell
+python scripts/evaluation/check_stage_c_model.py `
+  --profile medical_instruction_specialist `
+  --checkpoint-root artifacts/training/stage_c_sft_v1/checkpoints `
+  --promotion reports/stage_c/promoted_stage_c.json `
+  --test-evaluation reports/stage_c/stage_c_test_evaluation.json `
+  --instruction "Explain hypertension in plain language."
+```
+
+Use `--profile balanced_retention` to inspect the preferred-retention comparator.
+The generation gate establishes artifact integrity and operational inference, not
+medical correctness or safety.
+
 For Colab, create and upload the deterministic data bundle together with its
 generated SHA-256 sidecar:
 
@@ -306,8 +340,8 @@ python scripts/artifacts/create_stage_c_test_archive.py
 |---|---:|---:|---:|
 | Initialization | Random | Stage A weights | Stage B v2 weights |
 | Optimizer | AdamW | AdamW | AdamW |
-| Peak learning rate | `3e-4` | `4e-5` | `1e-5` baseline |
-| Final learning rate | `3e-5` | `4e-6` | `1e-6` |
+| Peak learning rate | `3e-4` | `4e-5` | `2e-5` selected |
+| Final learning rate | `3e-5` | `4e-6` | `2e-6` |
 | Betas | `(0.9, 0.95)` | `(0.9, 0.95)` | `(0.9, 0.95)` |
 | Weight decay | 0.1 | 0.05 | 0.01 |
 | Schedule | Warmup + cosine | Warmup + cosine | Warmup + cosine |
@@ -608,6 +642,8 @@ tests/                     Unit, regression, and tiny end-to-end tests
 - [Stage B v2 final report](reports/stage_b/v2/EXPERIMENT_REPORT.md)
 - [Stage B v2 evaluation](reports/stage_b/v2/stage_b_v2_evaluation.json)
 - [Promoted Stage B v2 pointer](reports/stage_b/v2/promoted_stage_b_v2.json)
+- [Stage C experiment plan](reports/stage_c/EXPERIMENT_PLAN.md)
+- [Stage C final experiment report](reports/stage_c/EXPERIMENT_REPORT.md)
 - [Continual-adaptation comparison registry](reports/comparisons/continual_adaptation_registry.json)
 
 ## Limitations and next work
@@ -615,15 +651,15 @@ tests/                     Unit, regression, and tiny end-to-end tests
 - Perplexity measures next-token prediction, not medical truthfulness or safety.
 - The 35.5M-parameter model has limited capacity and should not be compared directly
   with production-scale medical LLMs.
-- Generation is raw causal completion; the model has not undergone instruction
-  tuning, preference optimization, retrieval augmentation, or clinical calibration.
+- Stage C supports instruction-formatted generation but has not undergone preference
+  optimization, retrieval augmentation, clinical calibration, or safety alignment.
 - Evaluation currently emphasizes held-out language-model loss rather than medical
   QA accuracy, hallucination rate, calibration, bias, privacy, or adversarial safety.
 - The known test sets are sealed from all future tuning decisions; new untouched
   benchmarks will be required for repeated model-development comparisons.
-- The next active experiment is full-parameter Stage C supervised instruction fine-
-  tuning from the promoted Stage B v2 checkpoint. A later LoRA run remains planned as
-  a controlled parameter-efficient comparison.
+- The next active experiment is a controlled LoRA comparison using the same Stage B
+  v2 parent and Stage C data contracts. Because Stage C test results are now known,
+  further tuning requires a new untouched final benchmark.
 
 The project demonstrates a reproducible training and experimentation system for a
 small domain language model. It does **not** claim that the resulting checkpoint is a
