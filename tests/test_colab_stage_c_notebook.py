@@ -75,3 +75,17 @@ def test_stage_c_full_start_and_resume_are_standalone() -> None:
     assert "--resume', 'latest'" not in fresh
     assert "--resume', 'latest'" in resume
     assert "drive_metrics" in resume
+
+
+def test_stage_c_source_analysis_is_validation_only() -> None:
+    source_analysis = next(
+        source
+        for source in code_cells()
+        if "STAGE C PER-SOURCE VALIDATION ANALYSIS: VERIFIED" in source
+    )
+    assert "analyze_stage_c_sources.py" in source_analysis
+    assert "checkpoint_00000125" in source_analysis
+    assert "checkpoint_00000588" in source_analysis
+    assert "analysis_uses_test_data" in source_analysis
+    assert "sft_stage_c_v1/test" not in source_analysis
+    assert "evaluation_medical/test" not in source_analysis
