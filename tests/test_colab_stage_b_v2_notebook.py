@@ -36,6 +36,13 @@ def test_stage_b_v2_notebook_has_isolated_pilots_and_safe_selection() -> None:
     assert "selection_uses_test_data': False" in code_text
     assert "evaluation_medical/test" not in code_text
     assert "datasets/tokenized/evaluation/test" not in code_text
+    assert (
+        "https://github.com/moshiur00/small-language-model-for-medical-domain.git"
+        in code_text
+    )
+    assert "github.com/moshiru00/" not in code_text
+    assert "REPOSITORY_BRANCH = 'main'" in code_text
+    assert "'--branch', REPOSITORY_BRANCH, '--single-branch'" in code_text
 
 
 def test_stage_b_v2_full_start_and_resume_cells_are_standalone() -> None:
@@ -48,6 +55,10 @@ def test_stage_b_v2_full_start_and_resume_cells_are_standalone() -> None:
         assert "pip', 'install'" in source
         assert "stage-b-v2-data.tar" in source
         assert "checkpoint_00007250" in source
+        assert "Removing stale non-Git runtime directory" in source
+        assert (
+            "rglob('checkpoint_00007250/checkpoint_manifest.json')" in source
+        )
     assert "--resume', 'latest'" not in fresh
     assert "--resume', 'latest'" in resume
     assert "drive_metrics" in resume
